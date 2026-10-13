@@ -2,7 +2,7 @@
 
 **Status:** Entwurf v2. Enthält Vorschläge aus der Prüfung gegen StuPO und Rahmenordnung sowie die Antwort von Prof. Mihaljevic (13.10.2026). Die Bestätigung durch alle Personen im Team fehlt noch.
 
-Quellen:
+Quellen: 2
 - StuPO Informatik und Wirtschaft vom 10. Januar 2024 (AMBl. HTW Berlin Nr. 08/24, in Kraft ab 1. Oktober 2024)
 - Rahmenstudien- und -prüfungsordnung RStPO – Ba/Ma (AMBl. HTW Berlin Nr. 23/25)
 - Projektfolien (Folie 29 und 30)
