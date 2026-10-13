@@ -2,7 +2,7 @@
 
 **Status:** Entwurf v2. Enthält Vorschläge aus der Prüfung gegen StuPO und Rahmenordnung sowie die Antwort von Prof. Mihaljevic (13.10.2026). Die Bestätigung durch alle Personen im Team fehlt noch.
 
-Quellen: 2
+Quellen:
 - StuPO Informatik und Wirtschaft vom 10. Januar 2024 (AMBl. HTW Berlin Nr. 08/24, in Kraft ab 1. Oktober 2024)
 - Rahmenstudien- und -prüfungsordnung RStPO – Ba/Ma (AMBl. HTW Berlin Nr. 23/25)
 - Projektfolien (Folie 29 und 30)
@@ -13,7 +13,7 @@ Quellen: 2
 - `wahlangebot`: neue Spalte `gruppe` (WP oder SPRACHE)
 - `plan_eintrag` und `leistung`: neue Spalten `kurs_code` und `kurs_titel` für selbst eingetragene Kurse
 - `art` folgt der Realität statt der StuPO (Abschnitt 5)
-- E2 gilt nur noch für Semester, die noch nicht vorbei sind
+- E2: Ein geplantes Modul zählt nicht mehr, sobald es als `NICHT_BESTANDEN` eingetragen ist. Fehlende Noten führen zu keinem Fehler
 - Zusätzliche Regel für die Bachelorarbeit (Semester 1–3) und genaue Bedeutung von `toleranz_lp`
 - Nur noch erlaubte Noten (1,0 / 1,3 / … / 5,0)
 - Regeln, wann ein Semester vorbei ist, wer die Semesterzeilen anlegt und wie Semester verglichen werden (nie über die ID)
@@ -205,11 +205,11 @@ Die 15 WP-Angebote sind laut Prof. Mihaljevic Bereiche, keine genauen Kurstitel.
 
 Eindeutig über (`jahr`, `art`).
 
-**Wann ist ein Semester vorbei?** Das berechnet der Code mit einer festen Regel, ohne Datumsspalten:
+**Welches Semester ist gerade?** Das berechnet der Code mit einer festen Regel, ohne Datumsspalten:
 - WS `jahr` läuft vom 1. Oktober `jahr` bis 31. März `jahr + 1`
 - SS `jahr` läuft vom 1. April bis 30. September `jahr`
 
-Daraus ergibt sich auch das aktuelle Semester. Die genauen Vorlesungszeiten der HTW sind dafür nicht nötig.
+Die genauen Vorlesungszeiten der HTW sind dafür nicht nötig. Wichtig: Ob ein Semester vorbei ist, entscheidet **nicht**, ob eine Voraussetzung erfüllt ist. Dafür zählt nur das Ergebnis (siehe E2 in Abschnitt 5).
 
 **Wer legt die Zeilen an?** Die App legt ein Semester automatisch an, wenn es zum ersten Mal gebraucht wird (z. B. beim Planen von SS 2029). Die Tabelle muss also nicht vorab befüllt werden.
 
@@ -314,9 +314,26 @@ Diese Bedingungen sichern die Daten zusätzlich ab:
 
 **Wann gilt eine Voraussetzung als erfüllt (E2)?** NV heißt laut StuPO „notwendig bestanden“ (Erläuterungen zu Anlage 2). Eine notwendige Voraussetzung ist erfüllt, wenn
 - das Modul bestanden ist, **oder**
-- das Modul in einem früheren Semester geplant ist, **dieses Semester noch nicht vorbei ist** und es keine `leistung` mit `NICHT_BESTANDEN` gibt.
+- das Modul in einem früheren Semester geplant ist **und nicht** als `NICHT_BESTANDEN` eingetragen ist.
 
-So bleibt Vorausplanen möglich, aber ein alter Plan kann keine durchgefallene Prüfung verdecken. Wann ein Semester vorbei ist, steht in Abschnitt 3 bei `semester`. Dieselbe Regel gilt für LP-Voraussetzungen: gezählt werden bestandene LP plus LP aus Modulen, die in früheren, noch nicht beendeten Semestern geplant sind.
+Entscheidend ist also das Ergebnis, nicht das Datum:
+
+| Stand beim vorausgesetzten Modul | Ergebnis der Prüfung |
+|---|---|
+| `BESTANDEN` | erfüllt |
+| in einem früheren Semester geplant, noch kein Ergebnis (egal ob das Semester in der Zukunft liegt, gerade läuft oder schon vorbei ist) | erfüllt. Liegt das Semester schon zurück, zeigt die App den Hinweis „Ergebnis ausstehend“ |
+| `NICHT_BESTANDEN` | **Fehler** |
+| weder bestanden noch früher geplant | **Fehler** |
+
+**Warum nicht „nur zukünftige oder laufende Semester zählen“?** Noten kommen oft erst Wochen nach Beginn des nächsten Semesters. Der 2. Prüfungszeitraum reicht bis in die erste Vorlesungswoche des Folgesemesters (RStPO §16 Abs. 5), und Noten müssen erst bis zu drei Wochen danach bekannt gegeben werden (RStPO §17 Abs. 7). Würden vergangene Semester nicht mehr zählen, wäre der Plan in dieser Zeit fälschlich ungültig, obwohl die Note einfach noch fehlt. Die StuPO verbietet auch nicht, das nächste Semester vor den Noten zu planen.
+
+So bleibt Vorausplanen möglich, und eine bekannte durchgefallene Prüfung blockiert trotzdem sofort. Dieselbe Regel gilt für LP-Voraussetzungen: gezählt werden bestandene LP plus LP aus Modulen, die in früheren Semestern geplant und nicht als `NICHT_BESTANDEN` eingetragen sind.
+
+**Anzeige in der App.** Ob eine Voraussetzung erfüllt ist, wird **nicht als Spalte gespeichert**, sondern vom `PlanPruefer` berechnet. Der Wert hängt von anderen Daten ab (neue Note, verschobenes Modul) und würde als Spalte schnell veralten. Das Backend gibt das Ergebnis im API-Response mit (z. B. `voraussetzungErfuellt` und die Liste der `Verstoss`-Objekte). Das Frontend zeigt betroffene Module dann grau mit Warnung an:
+- NV nicht erfüllt → rote Fehlermeldung
+- EV nicht erfüllt → gelbe Warnung
+
+Offen fürs Team: Kann ein Modul mit nicht erfüllter NV trotzdem im Plan gespeichert werden (grau + Fehler), oder wird das Speichern blockiert?
 
 **Bachelorarbeit und Kolloquium.**
 - B66 Bachelorarbeit: `min_lp` 151, `toleranz_lp` 10 (StuPO §12, RStPO §25 Abs. 1 Satz 3).
@@ -374,13 +391,14 @@ Diese Regeln prüft der Service:
 
 1. Alle `voraussetzung`-Zeilen für B34 laden. Das ergibt eine notwendige (B11) und zwei empfohlene (B21, B24).
 2. Notwendig B11: Gibt es eine `leistung` der Person mit nutzende_id 10 für B11 mit `BESTANDEN`, ist die Bedingung erfüllt.
-3. Sonst: Liegt der `plan_eintrag` für B11 in einem früheren Semester als WS 2027 (verglichen über `jahr` und `art`), ist dieses Semester noch nicht vorbei und gibt es keine `leistung` mit `NICHT_BESTANDEN` für B11, ist der Plan ebenfalls zulässig (E2).
+3. Sonst: Liegt der `plan_eintrag` für B11 in einem früheren Semester als WS 2027 (verglichen über `jahr` und `art`) und gibt es keine `leistung` mit `NICHT_BESTANDEN` für B11, ist der Plan ebenfalls zulässig (E2).
 4. Trifft beides nicht zu, entsteht ein **Fehler**: „B34 braucht B11 (notwendig)“.
 5. Empfohlen B21 und B24: Fehlen beide im Plan und unter den bestandenen Modulen, entstehen zwei **Warnungen**. Der Plan bleibt gültig.
 
 Ergebnis:
-- Plan mit B11 im WS 2026 und B34 im WS 2027, WS 2026 läuft noch → gültig.
-- WS 2026 ist vorbei und B11 ist `NICHT_BESTANDEN` → **Fehler**, obwohl B11 im Plan steht.
+- Plan mit B11 im WS 2026 und B34 im WS 2027, B11 noch ohne Ergebnis → gültig.
+- WS 2026 ist vorbei, die Note für B11 fehlt noch → gültig, mit Hinweis „Ergebnis ausstehend“.
+- B11 ist als `NICHT_BESTANDEN` eingetragen → **Fehler**, obwohl B11 im Plan steht.
 - Plan mit B34 und ohne B11 → ungültig.
 
 ## 7. Klassenentwurf (Java, Spring Boot / JPA)
@@ -538,7 +556,7 @@ classDiagram
 | Nr. | Punkt | Vorschlag |
 |---|---|---|
 | E1 | Spalte `modul.benotet` | ergänzen. Bestätigt durch StuPO §10 Abs. 1: nur das Fachpraktikum ist unbenotet |
-| E2 | Wann gilt eine notwendige Voraussetzung als erfüllt | bestanden **oder** in einem früheren, noch nicht beendeten Semester geplant und nicht `NICHT_BESTANDEN`. Gilt auch für LP-Voraussetzungen |
+| E2 | Wann gilt eine notwendige Voraussetzung als erfüllt | bestanden **oder** in einem früheren Semester geplant und nicht `NICHT_BESTANDEN`. Es zählt das Ergebnis, nicht das Datum, weil Noten oft erst nach Semesterbeginn kommen (RStPO §16 Abs. 5, §17 Abs. 7). Gilt auch für LP-Voraussetzungen. „Erfüllt ja/nein“ wird berechnet, nicht gespeichert. Offen: Speichern bei nicht erfüllter NV erlauben oder blockieren? |
 | E3 | Zeitslots und Gruppen (`CourseOffering`, `CourseGroup`, `Meeting`) | weglassen, Frage im nächsten Review stellen |
 | E4 | `StuPO` als eigene Tabelle | weglassen, Modell gilt für StuPO 2024 |
 | E5 | Fehlversuche (`ModuleAttempt` im Ticket) | keine eigene Tabelle, `leistung` hat eine Zeile pro Modul (RStPO §18 Abs. 1: Die Wiederholung ersetzt die alte Note). Neu: Zähler `anzahl_versuche` (0–4) für Warnungen vor dem letzten Versuch (RStPO §18 Abs. 3) |
@@ -554,7 +572,7 @@ classDiagram
 | E15 | Erlaubte Noten | nur Werte laut RStPO §17 Abs. 1, als CHECK-Constraint |
 | E16 | Widersprüche in der StuPO | es gilt Anlage 2, außer bei der Modulart (E9) |
 | E17 | Geltungsbereich | nur Vollzeitstudium. Teilzeitplan (Anlage 3) nicht abgebildet |
-| E18 | Ende eines Semesters | feste Regel im Code (WS 1.10.–31.3., SS 1.4.–30.9.), keine Datumsspalten |
+| E18 | Aktuelles Semester | feste Regel im Code (WS 1.10.–31.3., SS 1.4.–30.9.), keine Datumsspalten. Entscheidet nicht über erfüllte Voraussetzungen (siehe E2) |
 | E19 | Semesterzeilen | legt die App automatisch an, wenn sie gebraucht werden |
 | E20 | Rolle `PROFESSOR_IN` | nicht selbst wählbar, wird von Hand gesetzt. Frage für das nächste Review: lieber über E-Mail-Adressen? |
 | E21 | Anerkannte Leistungen | als `BESTANDEN` eintragen, kein eigener Status. Unbenotet anerkannt = 4,0 (RStPO §32 Abs. 3) |
