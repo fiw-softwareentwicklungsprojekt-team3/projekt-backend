@@ -16,7 +16,8 @@ Quellen:
 - E2 gilt nur noch für Semester, die noch nicht vorbei sind
 - Zusätzliche Regel für die Bachelorarbeit (Semester 1–3) und genaue Bedeutung von `toleranz_lp`
 - Nur noch erlaubte Noten (1,0 / 1,3 / … / 5,0)
-- Regeln, wann ein Semester vorbei ist und wer die Semesterzeilen anlegt
+- Regeln, wann ein Semester vorbei ist, wer die Semesterzeilen anlegt und wie Semester verglichen werden (nie über die ID)
+- `leistung`: neue Spalte `anzahl_versuche` für Wiederholungen
 - Rolle `PROFESSOR_IN` kann nicht selbst gewählt werden
 - Anerkannte Leistungen und weitere Bedingungen (Abschnitt 3)
 - Geltungsbereich: nur Vollzeitstudium
@@ -33,7 +34,7 @@ Das Ticket nennt andere Entitäten als die 9 Tabellen dieses Modells. Die Zuordn
 | Module | `modul` | |
 | ModulePrerequisite (NV/EV) | `voraussetzung` | |
 | Semester | `semester` | |
-| ModuleAttempt | `leistung` | eine Zeile pro Modul und Person (Fehlversuche werden nicht einzeln gezählt) |
+| ModuleAttempt | `leistung` | eine Zeile pro Modul und Person. Die Zahl der Versuche steht in `anzahl_versuche`, einzelne Versuche werden nicht gespeichert |
 | PlanEntry | `plan_eintrag` | |
 | StuPO | nicht enthalten | Das Modell gilt für die StuPO 2024. Mehrere Versionen sind ein Nice-to-have (Folie 30). |
 | CourseOffering, CourseGroup, Meeting | nicht enthalten | Die Folien verlangen Planung nach Modulen und Semestern und die Prüfung der Voraussetzungen (Folie 29). Zeitüberschneidungen werden nicht gefordert, und in den vorliegenden Dokumenten gibt es keine Termine oder Räume als Datenquelle. |
@@ -131,6 +132,7 @@ erDiagram
         INTEGER semester_id FK
         VARCHAR status
         NUMERIC note
+        SMALLINT anzahl_versuche
     }
 ```
 
@@ -211,6 +213,12 @@ Daraus ergibt sich auch das aktuelle Semester. Die genauen Vorlesungszeiten der 
 
 **Wer legt die Zeilen an?** Die App legt ein Semester automatisch an, wenn es zum ersten Mal gebraucht wird (z. B. beim Planen von SS 2029). Die Tabelle muss also nicht vorab befüllt werden.
 
+**Reihenfolge von Semestern: nie über `semester_id` vergleichen!** Die IDs werden in der Reihenfolge vergeben, in der die Semester angelegt werden, nicht in zeitlicher Reihenfolge. Plant zum Beispiel jemand zuerst SS 2029 und erst später WS 2027, hat SS 2029 die kleinere ID, liegt aber später. „Früher“ und „später“ werden deshalb immer über `jahr` und `art` bestimmt:
+- erst nach `jahr` vergleichen,
+- bei gleichem `jahr` kommt `SS` vor `WS` (SS 2027 beginnt im April, WS 2027 im Oktober).
+
+Beispiel: WS 2026 < SS 2027 < WS 2027. Im Code z. B. als Sortierwert `jahr * 2 + (art = WS ? 1 : 0)`.
+
 ### nutzende
 | Spalte | Typ | Schlüssel | Hinweis |
 |---|---|---|---|
@@ -252,8 +260,11 @@ Eindeutig über (`nutzende_id`, `modul_code`).
 | semester_id | INTEGER | FK → semester | kann NULL sein, z. B. bei anerkannten Leistungen |
 | status | VARCHAR(15) | | `BELEGT`, `BESTANDEN`, `NICHT_BESTANDEN` |
 | note | NUMERIC(2,1) | | nur 1,0 / 1,3 / 1,7 / 2,0 / 2,3 / 2,7 / 3,0 / 3,3 / 3,7 / 4,0 / 5,0 (RStPO §17 Abs. 1). Bei `BELEGT` leer, bei `BESTANDEN` höchstens 4,0, bei `benotet = false` immer leer |
+| anzahl_versuche | SMALLINT | | Anzahl der Prüfungsversuche, mindestens 0, höchstens 4 |
 
 Eindeutig über (`nutzende_id`, `modul_code`). Die erlaubten Noten prüft ein CHECK-Constraint in der Datenbank.
+
+**Wiederholung einer Prüfung.** Es gibt weiter nur eine Zeile pro Modul und Person. Bei einer Wiederholung wird diese Zeile aktualisiert: `status`, `note` und `semester_id` bekommen die neuen Werte, und `anzahl_versuche` wird um 1 erhöht. Das passt zur RStPO §18 Abs. 1: Das Ergebnis der Wiederholung ersetzt die alte Note. Laut RStPO §18 Abs. 3 gibt es höchstens drei Versuche, einen vierten nur nach einer Studienfachberatung. Danach ist das Modul endgültig nicht bestanden. Mit `anzahl_versuche` kann die App deshalb warnen, z. B. „Achtung, das ist dein letzter Versuch“. Wann die einzelnen Versuche waren, wird nicht gespeichert.
 
 **Anerkannte Leistungen.** Leistungen aus einem anderen Studiengang oder aus dem Mobilitätssemester (StuPO §7 Abs. 5) werden wie normale Leistungen mit `BESTANDEN` eingetragen. Ein eigener Status ist nicht nötig. Wird eine unbenotete Leistung für ein benotetes Modul anerkannt, ist die Note 4,0 (RStPO §32 Abs. 3). `semester_id` darf dabei leer bleiben, falls das Semester nicht bekannt ist.
 
@@ -354,22 +365,22 @@ Diese Regeln prüft der Service:
 |---|---|
 | modul | B11 Programmierung 1, B34 Softwareentwicklungsprojekt, B21 Programmierung 2, B24 Webtechnologien |
 | voraussetzung | (B34, `NOTWENDIG`, vorausgesetzt B11), (B34, `EMPFOHLEN`, B21), (B34, `EMPFOHLEN`, B24) |
-| semester | 1 = WS 2026, 2 = SS 2027, 3 = WS 2027 |
+| semester | WS 2026, SS 2027, WS 2027 (die IDs sind egal, verglichen wird über `jahr` und `art`) |
 | nutzende | 10, Rolle `STUDIERENDE` |
-| studierende | nutzende_id 10, Startsemester 1 |
-| plan_eintrag | (nutzende_id 10, B11, Semester 1), (nutzende_id 10, B34, Semester 3) |
+| studierende | nutzende_id 10, Startsemester WS 2026 |
+| plan_eintrag | (nutzende_id 10, B11, WS 2026), (nutzende_id 10, B34, WS 2027) |
 
 **Prüfung des Plans der Person mit nutzende_id 10:**
 
 1. Alle `voraussetzung`-Zeilen für B34 laden. Das ergibt eine notwendige (B11) und zwei empfohlene (B21, B24).
 2. Notwendig B11: Gibt es eine `leistung` der Person mit nutzende_id 10 für B11 mit `BESTANDEN`, ist die Bedingung erfüllt.
-3. Sonst: Liegt der `plan_eintrag` für B11 in einem früheren Semester als Semester 3, ist dieses Semester noch nicht vorbei und gibt es keine `leistung` mit `NICHT_BESTANDEN` für B11, ist der Plan ebenfalls zulässig (E2).
+3. Sonst: Liegt der `plan_eintrag` für B11 in einem früheren Semester als WS 2027 (verglichen über `jahr` und `art`), ist dieses Semester noch nicht vorbei und gibt es keine `leistung` mit `NICHT_BESTANDEN` für B11, ist der Plan ebenfalls zulässig (E2).
 4. Trifft beides nicht zu, entsteht ein **Fehler**: „B34 braucht B11 (notwendig)“.
 5. Empfohlen B21 und B24: Fehlen beide im Plan und unter den bestandenen Modulen, entstehen zwei **Warnungen**. Der Plan bleibt gültig.
 
 Ergebnis:
-- Plan mit B11 in Semester 1 und B34 in Semester 3, Semester 1 läuft noch → gültig.
-- Semester 1 ist vorbei und B11 ist `NICHT_BESTANDEN` → **Fehler**, obwohl B11 im Plan steht.
+- Plan mit B11 im WS 2026 und B34 im WS 2027, WS 2026 läuft noch → gültig.
+- WS 2026 ist vorbei und B11 ist `NICHT_BESTANDEN` → **Fehler**, obwohl B11 im Plan steht.
 - Plan mit B34 und ohne B11 → ungültig.
 
 ## 7. Klassenentwurf (Java, Spring Boot / JPA)
@@ -447,6 +458,7 @@ classDiagram
         Semester semester
         Status status
         BigDecimal note
+        Integer anzahlVersuche
     }
     class Rolle {
         <<enumeration>>
@@ -529,7 +541,7 @@ classDiagram
 | E2 | Wann gilt eine notwendige Voraussetzung als erfüllt | bestanden **oder** in einem früheren, noch nicht beendeten Semester geplant und nicht `NICHT_BESTANDEN`. Gilt auch für LP-Voraussetzungen |
 | E3 | Zeitslots und Gruppen (`CourseOffering`, `CourseGroup`, `Meeting`) | weglassen, Frage im nächsten Review stellen |
 | E4 | `StuPO` als eigene Tabelle | weglassen, Modell gilt für StuPO 2024 |
-| E5 | Fehlversuche einzeln speichern (`ModuleAttempt` im Ticket) | in v1 nicht, `leistung` hat eine Zeile pro Modul. Passt zu RStPO §18 Abs. 1: Die Wiederholung ersetzt die alte Note |
+| E5 | Fehlversuche (`ModuleAttempt` im Ticket) | keine eigene Tabelle, `leistung` hat eine Zeile pro Modul (RStPO §18 Abs. 1: Die Wiederholung ersetzt die alte Note). Neu: Zähler `anzahl_versuche` (0–4) für Warnungen vor dem letzten Versuch (RStPO §18 Abs. 3) |
 | E6 | Sprachvarianten laut StuPO-Anlage 5 (B63 + B64 als ein 4-LP-Modul) | in v1 nicht modelliert. Eine zweite Fremdsprache oder vertiefte Sprache bei B63/B64 wird über `kurs_code` eingetragen |
 | E7 | Namen in Tabellen und Klassen | Deutsch wie in der Skizze, das Ticket nennt englische Namen |
 | E8 | Gendergerechte Sprache | Texte nutzen Unterstrich-Formen oder neutrale Begriffe wie in den Projektfolien (Professor_in, Studierende, Personen im Team). Technische Bezeichner sind ebenfalls neutral: Tabelle `nutzende`, Rollenwerte `STUDIERENDE` und `PROFESSOR_IN` |
@@ -547,3 +559,4 @@ classDiagram
 | E20 | Rolle `PROFESSOR_IN` | nicht selbst wählbar, wird von Hand gesetzt. Frage für das nächste Review: lieber über E-Mail-Adressen? |
 | E21 | Anerkannte Leistungen | als `BESTANDEN` eintragen, kein eigener Status. Unbenotet anerkannt = 4,0 (RStPO §32 Abs. 3) |
 | E22 | Weitere Bedingungen | CHECK, UNIQUE und Service-Regeln laut Abschnitt 3 |
+| E23 | Reihenfolge von Semestern | immer über `jahr` und `art` vergleichen, nie über `semester_id` |
