@@ -1,0 +1,34 @@
+flowchart LR
+    S(["Rolle: STUDIERENDE"])
+    P(["Rolle: PROFESSOR_IN"])
+
+    subgraph FE["Frontend"]
+        A["Angular"]
+    end
+
+    subgraph BE["Backend (Spring Boot)"]
+        C["REST-API<br/>(Controller)"]
+        subgraph SV["Service-Schicht"]
+            SL["Semesterlogik"]
+            PP["Planprüfung<br/>(Voraussetzungen)"]
+            FO["Fortschritt"]
+            ST["Statistik<br/>(anonymisiert)"]
+        end
+        R["Repository<br/>(Spring Data JPA)"]
+    end
+
+    DB[("PostgreSQL")]
+
+    S -->|"eigener Plan, Fortschritt"| A
+    P -->|"nur anonymisierte Statistik"| A
+    A -->|"HTTP/JSON"| C
+    C --> SL
+    C --> PP
+    C --> FO
+    C --> ST
+    SL --> R
+    PP --> R
+    FO --> R
+    ST --> R
+    R --> DB 
+    
