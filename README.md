@@ -25,4 +25,16 @@ Sobald der Server läuft, ist die Swagger-UI erreichbar unter:
 | DTOs | `de.htw.studyplanner.backend.dto` |
 | Konfiguration | `de.htw.studyplanner.backend.config` |
 
+## Datenbank lokal starten
+
+Voraussetzung: Docker Desktop läuft.
+
+```bash
+cp .env.example .env
+docker compose up -d
+./mvnw spring-boot:run
+```
+
+Details, HTW-Server und Regeln für Migrationen: [docs/datenbank.md](docs/datenbank.md)
+
 
