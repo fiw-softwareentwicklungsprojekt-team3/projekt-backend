@@ -58,11 +58,11 @@ erDiagram
     MODUL ||--o{ VORAUSSETZUNG : "hat"
     MODUL |o--o{ VORAUSSETZUNG : "ist vorausgesetzt in"
     MODUL |o--o{ WAHLANGEBOT : "empfohlene Voraussetzung"
-    NUTZENDE ||--o{ PLAN_EINTRAG : "plant"
+    STUDIERENDE ||--o{ PLAN_EINTRAG : "plant"
     MODUL ||--o{ PLAN_EINTRAG : "geplant"
     WAHLANGEBOT |o--o{ PLAN_EINTRAG : "gewähltes Angebot"
     SEMESTER ||--o{ PLAN_EINTRAG : "geplant in"
-    NUTZENDE ||--o{ LEISTUNG : "erbringt"
+    STUDIERENDE ||--o{ LEISTUNG : "erbringt"
     MODUL ||--o{ LEISTUNG : "Leistung für"
     WAHLANGEBOT |o--o{ LEISTUNG : "gewähltes Angebot"
     SEMESTER |o--o{ LEISTUNG : "erbracht in"
@@ -249,7 +249,7 @@ Bei der Registrierung bekommt jede Person die Rolle `STUDIERENDE`. Die Rolle `PR
 | Spalte | Typ | Schlüssel | Hinweis |
 |---|---|---|---|
 | plan_eintrag_id | INTEGER | PK | |
-| nutzende_id | INTEGER | FK → nutzende | |
+| nutzende_id | INTEGER | FK → studierende | nicht auf `nutzende`: nur Studierende haben einen Plan |
 | modul_code | VARCHAR(10) | FK → modul | |
 | wahlangebot_code | VARCHAR(10) | FK → wahlangebot | Auswahl aus der Liste, nur bei `mit_auswahl` |
 | kurs_code | VARCHAR(30) | | selbst eingetragene Veranstaltungsnummer, nur bei `mit_auswahl`. Im Plan immer optional, weil man den Kurs beim Planen oft noch nicht kennt |
@@ -262,7 +262,7 @@ Eindeutig über (`nutzende_id`, `modul_code`).
 | Spalte | Typ | Schlüssel | Hinweis |
 |---|---|---|---|
 | leistung_id | INTEGER | PK | |
-| nutzende_id | INTEGER | FK → nutzende | |
+| nutzende_id | INTEGER | FK → studierende | nicht auf `nutzende`: nur Studierende erbringen Leistungen |
 | modul_code | VARCHAR(10) | FK → modul | |
 | wahlangebot_code | VARCHAR(10) | FK → wahlangebot | wie bei `plan_eintrag` |
 | kurs_code | VARCHAR(30) | | Veranstaltungsnummer, nur bei `mit_auswahl`. Bei AWE (B63/B64) Pflicht |
@@ -301,11 +301,11 @@ Diese Bedingungen sichern die Daten zusätzlich ab:
 | modul – wahlangebot (empfohlene Voraussetzung) | 1 : n, optional | `wahlangebot.empfohlen_modul_code` |
 | nutzende – studierende | 1 : 0..1 | `studierende.nutzende_id` |
 | semester – studierende | 1 : n | `studierende.startsemester_id` |
-| nutzende – plan_eintrag | 1 : n | `plan_eintrag.nutzende_id` |
+| studierende – plan_eintrag | 1 : n | `plan_eintrag.nutzende_id` |
 | modul – plan_eintrag | 1 : n | `plan_eintrag.modul_code` |
 | wahlangebot – plan_eintrag | 1 : n, optional | `plan_eintrag.wahlangebot_code` |
 | semester – plan_eintrag | 1 : n | `plan_eintrag.semester_id` |
-| nutzende – leistung | 1 : n | `leistung.nutzende_id` |
+| studierende – leistung | 1 : n | `leistung.nutzende_id` |
 | modul – leistung | 1 : n | `leistung.modul_code` |
 | wahlangebot – leistung | 1 : n, optional | `leistung.wahlangebot_code` |
 | semester – leistung | 1 : n, optional | `leistung.semester_id` |
@@ -314,8 +314,8 @@ Diese Bedingungen sichern die Daten zusätzlich ab:
 
 | n:m | Zwischentabelle |
 |---|---|
-| nutzende – modul (geplant) | `plan_eintrag` |
-| nutzende – modul (abgelegt) | `leistung` |
+| studierende – modul (geplant) | `plan_eintrag` |
+| studierende – modul (abgelegt) | `leistung` |
 | modul – modul (Voraussetzung) | `voraussetzung` |
 
 ## 5. Modellierungsfragen
@@ -496,7 +496,7 @@ classDiagram
     }
     class PlanEintrag {
         Integer planEintragId
-        Nutzende nutzende
+        Studierende studierende
         Modul modul
         Wahlangebot wahlangebot
         String kursCode
@@ -505,7 +505,7 @@ classDiagram
     }
     class Leistung {
         Integer leistungId
-        Nutzende nutzende
+        Studierende studierende
         Modul modul
         Wahlangebot wahlangebot
         String kursCode
@@ -572,11 +572,11 @@ classDiagram
     Modul "0..1" --> "*" Wahlangebot : empfohlene Voraussetzung
     Nutzende "1" --> "0..1" Studierende
     Semester "1" --> "*" Studierende : Startsemester
-    Nutzende "1" --> "*" PlanEintrag
+    Studierende "1" --> "*" PlanEintrag
     Modul "1" --> "*" PlanEintrag
     Wahlangebot "0..1" --> "*" PlanEintrag
     Semester "1" --> "*" PlanEintrag
-    Nutzende "1" --> "*" Leistung
+    Studierende "1" --> "*" Leistung
     Modul "1" --> "*" Leistung
     Wahlangebot "0..1" --> "*" Leistung
     Semester "0..1" --> "*" Leistung
@@ -612,6 +612,7 @@ Alle Punkte sind im Team entschieden und, soweit sie die Datenbank betreffen, in
 | E24 | Umfang von `zaehlt_in_x1` | `false` nicht nur bei B11–B16, sondern auch bei B43 (unbenotet), B66 (Größe X2) und B65 (Größe X3). Probe: die übrigen Module ergeben die 115 LP aus der Tabelle in StuPO §15 |
 | E25 | SWS ohne Angabe | als `0` führen, nicht als NULL. Betrifft B43 und B66. Damit bleibt die NOT-NULL-Bedingung aus V1 unverändert und es braucht keine Schema-Migration |
 | E26 | Sprachangebote je Niveau | eine Zeile pro Sprache **und** Niveau (10 Zeilen), weil dieselbe Sprache in B16 und B26 auf unterschiedlichen GER-Niveaus läuft. `niveaustufe` trennt die Module (`1a` = B16, `1b` = B26), das GER-Niveau steht in `code` und `bezeichnung`. „Gleiche Sprache in B16 und B26“ prüft der Service über das Präfix vor dem Unterstrich |
+| E27 | Zielzeile von `plan_eintrag.nutzende_id` und `leistung.nutzende_id` | beide zeigen auf **`studierende`**, nicht auf `nutzende`. Nur Studierende planen Module und erbringen Leistungen. Da eine Person mit der Rolle `PROFESSOR_IN` keine Zeile in `studierende` hat, kann sie schon durch den Fremdschlüssel keinen Plan und keine Leistung bekommen; das muss der Service nicht zusätzlich prüfen. So in V1 umgesetzt, die Diagramme in diesem Dokument zeigten bis jetzt fälschlich `nutzende` |
 | E15 | Erlaubte Noten | nur Werte laut RStPO §17 Abs. 1, als CHECK-Constraint |
 | E16 | Widersprüche in der StuPO | es gilt Anlage 2, außer bei der Modulart (E9) |
 | E17 | Geltungsbereich | nur Vollzeitstudium. Teilzeitplan (Anlage 3) nicht abgebildet |
