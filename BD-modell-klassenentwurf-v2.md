@@ -1,6 +1,6 @@
 # ER-Modell und Klassenentwurf (Entwurf v2, 9 Tabellen)
 
-**Status:** Entwurf v2. Enthält Vorschläge aus der Prüfung gegen StuPO und Rahmenordnung sowie die Antwort von Prof. Mihaljevic (13.10.2026). Die Bestätigung durch alle Personen im Team fehlt noch.
+**Status:** Bestätigt. Die Entscheidungen E1 bis E26 in Abschnitt 8 sind im Team beschlossen und in der Migration `V2__stupo_seed.sql` umgesetzt. Es gibt keine offenen Punkte mehr.
 
 Quellen:
 - StuPO Informatik und Wirtschaft vom 10. Januar 2024 (AMBl. HTW Berlin Nr. 08/24, in Kraft ab 1. Oktober 2024)
@@ -22,6 +22,12 @@ Quellen:
 - Anerkannte Leistungen und weitere Bedingungen (Abschnitt 3)
 - Geltungsbereich: nur Vollzeitstudium
 
+**Nachträge aus der Umsetzung (E23–E26).** Beim Einspielen der echten Daten aus Anlage 2 sind vier Punkte dazugekommen, die in v2 noch gefehlt haben oder anders geplant waren:
+- `B43` Fachpraktikum braucht **60 LP** (Anlage 2 und StuPO §11 Abs. 4). Diese Voraussetzung fehlte im Modell (E23)
+- `zaehlt_in_x1` ist zusätzlich bei `B43`, `B65` und `B66` `false` (E24)
+- SWS ohne Angabe werden als **0** geführt, nicht als NULL (E25)
+- Sprachangebote stehen **je Niveau** in einer eigenen Zeile (E26)
+
 **Geltungsbereich:** Das Modell gilt nur für das **Vollzeitstudium**. Das empfohlene Semester eines Moduls wird aus dem Studienplan für Vollzeit (Anlage 2) berechnet. Der Teilzeitplan (Anlage 3) und die Sonderregel für Teilzeit bei der Bachelorarbeit (Semester 1–6 statt 1–3, RStPO §25 Abs. 1) sind nicht abgebildet. Die Projektfolien verlangen kein Teilzeitstudium. Studierende in Teilzeit können die App trotzdem nutzen, bekommen aber Empfehlungen für Vollzeit.
 
 ## 1. Abweichungen vom Ticket
@@ -40,7 +46,7 @@ Das Ticket nennt andere Entitäten als die 9 Tabellen dieses Modells. Die Zuordn
 | CourseOffering, CourseGroup, Meeting | nicht enthalten | Die Folien verlangen Planung nach Modulen und Semestern und die Prüfung der Voraussetzungen (Folie 29). Zeitüberschneidungen werden nicht gefordert, und in den vorliegenden Dokumenten gibt es keine Termine oder Räume als Datenquelle. |
 | (nicht im Ticket) | `modul_teil`, `wahlangebot` | `modul_teil` für B34/B35/B65, `wahlangebot` für die Auswahl bei B16/B26 und B41/B54 |
 
-Offene Frage für das nächste Review mit den Betreuer_innen: „Soll der Stundenplan auch Zeitüberschneidungen prüfen oder nur die Voraussetzungen aus der StuPO?“ Bei der Antwort „nur Voraussetzungen“ bleibt es bei diesen 9 Tabellen.
+Das Modell bleibt bei diesen 9 Tabellen. **Zeitüberschneidungen sind nicht im Umfang des Projekts (E3):** Der Stundenplan prüft nur die Voraussetzungen aus der StuPO. Das deckt sich mit Folie 29, und in den vorliegenden Dokumenten gibt es ohnehin keine Termine oder Räume als Datenquelle. Tabellen für Veranstaltungen, Gruppen und Termine entfallen damit endgültig.
 
 ## 2. ER-Diagramm
 
@@ -52,11 +58,11 @@ erDiagram
     MODUL ||--o{ VORAUSSETZUNG : "hat"
     MODUL |o--o{ VORAUSSETZUNG : "ist vorausgesetzt in"
     MODUL |o--o{ WAHLANGEBOT : "empfohlene Voraussetzung"
-    NUTZENDE ||--o{ PLAN_EINTRAG : "plant"
+    STUDIERENDE ||--o{ PLAN_EINTRAG : "plant"
     MODUL ||--o{ PLAN_EINTRAG : "geplant"
     WAHLANGEBOT |o--o{ PLAN_EINTRAG : "gewähltes Angebot"
     SEMESTER ||--o{ PLAN_EINTRAG : "geplant in"
-    NUTZENDE ||--o{ LEISTUNG : "erbringt"
+    STUDIERENDE ||--o{ LEISTUNG : "erbringt"
     MODUL ||--o{ LEISTUNG : "Leistung für"
     WAHLANGEBOT |o--o{ LEISTUNG : "gewähltes Angebot"
     SEMESTER |o--o{ LEISTUNG : "erbracht in"
@@ -150,14 +156,14 @@ Datentypen für PostgreSQL. `PK` = Primärschlüssel, `FK` = Fremdschlüssel, `U
 | bereich | VARCHAR(4) | | `FACH` oder `AWE`. AWE = B16, B26, B63, B64 (StuPO §9, Anlage 5) |
 | mit_auswahl | BOOLEAN | | `true`, wenn Studierende den Inhalt wählen: B16, B26, B41, B54, B63, B64 |
 | lp | SMALLINT | | Leistungspunkte |
-| sws_vorlesung | SMALLINT | | SWS seminaristischer Lehrvortrag (SL). NULL, wenn keine Angabe |
-| sws_uebung | SMALLINT | | SWS Übung (PCÜ, PÜ) und (Projekt-)Seminar (PS). NULL, wenn keine Angabe |
+| sws_vorlesung | SMALLINT | | SWS seminaristischer Lehrvortrag (SL). 0, wenn keine Angabe (E25) |
+| sws_uebung | SMALLINT | | SWS Übung (PCÜ, PÜ) und (Projekt-)Seminar (PS). 0, wenn keine Angabe (E25) |
 | niveaustufe | VARCHAR(2) | | `1a`, `1b` oder NULL |
 | turnus | VARCHAR(5) | | `WS`, `SS` oder `BEIDE` (siehe Abschnitt 5) |
-| zaehlt_in_x1 | BOOLEAN | | zählt für die Gesamtnote (StuPO §14 Abs. 3, §15) |
+| zaehlt_in_x1 | BOOLEAN | | geht in die Größe X1 der Gesamtnote ein (StuPO §15). `false` bei B11–B16, B43, B65 und B66 (E24) |
 | benotet | BOOLEAN | | `false` nur beim Fachpraktikum (StuPO §10 Abs. 1, §11 Abs. 7) |
 
-Beispiele für SWS: B11 „SL/PCÜ 4/2“ → `sws_vorlesung` 4, `sws_uebung` 2. B13 „SL 4“ → 4 und 0. B16 „PÜ 4“ → 0 und 4. B34 „PS“ (Teile 4 + 2) → 0 und 6. B43 und B66 → beide NULL.
+Beispiele für SWS: B11 „SL/PCÜ 4/2“ → `sws_vorlesung` 4, `sws_uebung` 2. B13 „SL 4“ → 4 und 0. B16 „PÜ 4“ → 0 und 4. B34 „PS“ (Teile 4 + 2) → 0 und 6. B35 (Teile 2 + 2) → 0 und 4. B65 (Teil 1) → 0 und 1. B43 und B66 haben in Anlage 2 keine SWS → beide 0 und 0 (E25).
 
 ### modul_teil
 | Spalte | Typ | Schlüssel | Hinweis |
@@ -187,14 +193,18 @@ Bedeutung von `toleranz_lp` am Beispiel Bachelorarbeit (`min_lp` 151, `toleranz_
 ### wahlangebot
 | Spalte | Typ | Schlüssel | Hinweis |
 |---|---|---|---|
-| code | VARCHAR(10) | PK | WP1–WP15, Sprachen z. B. `EN`, `FR`, `RU`, `ES`, `DAF` |
+| code | VARCHAR(10) | PK | `WP1`–`WP15`, Sprachen je Niveau: `EN_B2.1`, `EN_B2.2`, `FR_B1.2`, `FR_B2.1`, `RU_B1.2`, `RU_B2.1`, `ES_B1.2`, `ES_B2.1`, `DAF_B2.2`, `DAF_C1.1` (E26) |
 | bezeichnung | VARCHAR(150) | | |
 | gruppe | VARCHAR(10) | | `WP` (für B41/B54) oder `SPRACHE` (für B16/B26) |
-| niveaustufe | VARCHAR(2) | | `1a`, `1b` oder NULL |
-| sws | SMALLINT | | NULL bei Sprachen |
+| niveaustufe | VARCHAR(2) | | `1a`, `1b` oder NULL. Bei Sprachen trennt die Spalte die beiden Module: `1a` gehört zu B16, `1b` zu B26 (E26) |
+| sws | SMALLINT | | 4 bei allen Angeboten (Anlage 4 und Anlage 5) |
 | empfohlen_modul_code | VARCHAR(10) | FK → modul | empfohlene Voraussetzung (EV laut Anlage 4), NULL, wenn keine |
 
 Die 15 WP-Angebote sind laut Prof. Mihaljevic Bereiche, keine genauen Kurstitel. Jeder tatsächlich angebotene Kurs lässt sich einem Bereich zuordnen. Für AWE (B63/B64) gibt es keine Liste, weil die StuPO dort „freie Wahl“ vorsieht.
+
+**Sprachen stehen je Niveau in einer eigenen Zeile (E26).** Dieselbe Sprache wird in B16 und B26 auf unterschiedlichen GER-Niveaus unterrichtet, zum Beispiel Englisch B2.1 in B16 und B2.2 in B26 (Anlage 5, Variante 1). Eine Zeile pro Sprache könnte das nicht abbilden. Das GER-Niveau steht nur in `code` und `bezeichnung`, denn `niveaustufe` ist die Niveaustufe der StuPO (`1a`/`1b`) und nicht das Sprachniveau.
+
+Daraus folgt eine Service-Regel: „B26 hat dieselbe Sprache wie B16“ wird über das Präfix vor dem Unterstrich verglichen, nicht über den ganzen Code. `EN_B2.1` in B16 und `EN_B2.2` in B26 ist also korrekt, `EN_B2.1` und `FR_B2.1` nicht.
 
 ### semester
 | Spalte | Typ | Schlüssel | Hinweis |
@@ -227,7 +237,7 @@ Beispiel: WS 2026 < SS 2027 < WS 2027. Im Code z. B. als Sortierwert `jahr * 2 +
 | passwort_hash | VARCHAR(200) | | nie das Passwort selbst |
 | rolle | VARCHAR(15) | | `STUDIERENDE` oder `PROFESSOR_IN` |
 
-Bei der Registrierung bekommt jede Person die Rolle `STUDIERENDE`. Die Rolle `PROFESSOR_IN` kann man nicht selbst wählen, sonst könnte jede Person die Statistiken sehen. Vorschlag: Sie wird von Hand in der Datenbank gesetzt. Alternative: automatisch für bestimmte E-Mail-Adressen. Frage für das nächste Review.
+Bei der Registrierung bekommt jede Person die Rolle `STUDIERENDE`. Die Rolle `PROFESSOR_IN` kann man nicht selbst wählen, sonst könnte jede Person die Statistiken sehen. Sie wird von Hand in der Datenbank gesetzt (E20). Eine automatische Vergabe über bestimmte E-Mail-Adressen bleibt als Nice-to-have denkbar und ändert am Modell nichts.
 
 ### studierende
 | Spalte | Typ | Schlüssel | Hinweis |
@@ -239,7 +249,7 @@ Bei der Registrierung bekommt jede Person die Rolle `STUDIERENDE`. Die Rolle `PR
 | Spalte | Typ | Schlüssel | Hinweis |
 |---|---|---|---|
 | plan_eintrag_id | INTEGER | PK | |
-| nutzende_id | INTEGER | FK → nutzende | |
+| nutzende_id | INTEGER | FK → studierende | nicht auf `nutzende`: nur Studierende haben einen Plan |
 | modul_code | VARCHAR(10) | FK → modul | |
 | wahlangebot_code | VARCHAR(10) | FK → wahlangebot | Auswahl aus der Liste, nur bei `mit_auswahl` |
 | kurs_code | VARCHAR(30) | | selbst eingetragene Veranstaltungsnummer, nur bei `mit_auswahl`. Im Plan immer optional, weil man den Kurs beim Planen oft noch nicht kennt |
@@ -252,7 +262,7 @@ Eindeutig über (`nutzende_id`, `modul_code`).
 | Spalte | Typ | Schlüssel | Hinweis |
 |---|---|---|---|
 | leistung_id | INTEGER | PK | |
-| nutzende_id | INTEGER | FK → nutzende | |
+| nutzende_id | INTEGER | FK → studierende | nicht auf `nutzende`: nur Studierende erbringen Leistungen |
 | modul_code | VARCHAR(10) | FK → modul | |
 | wahlangebot_code | VARCHAR(10) | FK → wahlangebot | wie bei `plan_eintrag` |
 | kurs_code | VARCHAR(30) | | Veranstaltungsnummer, nur bei `mit_auswahl`. Bei AWE (B63/B64) Pflicht |
@@ -291,11 +301,11 @@ Diese Bedingungen sichern die Daten zusätzlich ab:
 | modul – wahlangebot (empfohlene Voraussetzung) | 1 : n, optional | `wahlangebot.empfohlen_modul_code` |
 | nutzende – studierende | 1 : 0..1 | `studierende.nutzende_id` |
 | semester – studierende | 1 : n | `studierende.startsemester_id` |
-| nutzende – plan_eintrag | 1 : n | `plan_eintrag.nutzende_id` |
+| studierende – plan_eintrag | 1 : n | `plan_eintrag.nutzende_id` |
 | modul – plan_eintrag | 1 : n | `plan_eintrag.modul_code` |
 | wahlangebot – plan_eintrag | 1 : n, optional | `plan_eintrag.wahlangebot_code` |
 | semester – plan_eintrag | 1 : n | `plan_eintrag.semester_id` |
-| nutzende – leistung | 1 : n | `leistung.nutzende_id` |
+| studierende – leistung | 1 : n | `leistung.nutzende_id` |
 | modul – leistung | 1 : n | `leistung.modul_code` |
 | wahlangebot – leistung | 1 : n, optional | `leistung.wahlangebot_code` |
 | semester – leistung | 1 : n, optional | `leistung.semester_id` |
@@ -304,8 +314,8 @@ Diese Bedingungen sichern die Daten zusätzlich ab:
 
 | n:m | Zwischentabelle |
 |---|---|
-| nutzende – modul (geplant) | `plan_eintrag` |
-| nutzende – modul (abgelegt) | `leistung` |
+| studierende – modul (geplant) | `plan_eintrag` |
+| studierende – modul (abgelegt) | `leistung` |
 | modul – modul (Voraussetzung) | `voraussetzung` |
 
 ## 5. Modellierungsfragen
@@ -333,18 +343,33 @@ So bleibt Vorausplanen möglich, und eine bekannte durchgefallene Prüfung block
 - NV nicht erfüllt → rote Fehlermeldung
 - EV nicht erfüllt → gelbe Warnung
 
-Offen fürs Team: Kann ein Modul mit nicht erfüllter NV trotzdem im Plan gespeichert werden (grau + Fehler), oder wird das Speichern blockiert?
+**Speichern wird nie blockiert (E2).** Ein Modul mit nicht erfüllter notwendiger Voraussetzung lässt sich trotzdem in den Plan eintragen. Das Backend nimmt den `plan_eintrag` an und gibt die Verstöße im Response mit, das Frontend zeigt das Modul grau mit der passenden Meldung an. Es gibt also keinen Zustand, in dem Studierende ihren Plan nicht speichern können.
 
-**Bachelorarbeit und Kolloquium.**
+Der Grund ist derselbe wie bei E2 oben: Wenn die Belegung für das nächste Semester startet, stehen die Noten des laufenden Semesters oft noch aus (RStPO §16 Abs. 5, §17 Abs. 7). Würde das Backend blockieren, könnten Studierende genau in dieser Zeit nicht weiterplanen, obwohl nur die Note fehlt. Ob geflaggt wird, hängt deshalb am Ergebnis und nicht am Datum:
+
+| Stand beim vorausgesetzten Modul | Plan speicherbar | Anzeige |
+|---|---|---|
+| `BESTANDEN` | ja | kein Hinweis |
+| geplant, noch kein Ergebnis | ja | kein Fehler, Hinweis „Ergebnis ausstehend“ |
+| `NICHT_BESTANDEN` | ja | grau, rote Fehlermeldung |
+| weder bestanden noch geplant | ja | grau, rote Fehlermeldung |
+
+Damit ist die Prüfung reine Information für die Studierenden und keine Sperre.
+
+**Voraussetzungen auf Leistungspunkte.** Drei Module setzen keine einzelnen Module voraus, sondern eine Mindestzahl an LP:
+- B43 Fachpraktikum: `min_lp` 60, `toleranz_lp` 0 (Anlage 2 und StuPO §11 Abs. 4). **Neu in E23**, in v2 übersehen.
 - B66 Bachelorarbeit: `min_lp` 151, `toleranz_lp` 10 (StuPO §12, RStPO §25 Abs. 1 Satz 3).
-- Zusätzlich müssen alle Module der Semester 1–3 bestanden sein (RStPO §25 Abs. 1 Satz 4). Das sind 17 weitere `NOTWENDIG`-Zeilen für B66 (B11–B16, B21–B26, B31–B35), ohne Toleranz. Am Modell ändert sich dadurch nichts.
 - B65 Kolloquium: `NOTWENDIG` B66 und `min_lp` 177 (StuPO §13, RStPO §28).
+
+Zusätzlich müssen für die Bachelorarbeit alle Module der Semester 1–3 bestanden sein (RStPO §25 Abs. 1 Satz 4). Das sind 17 weitere `NOTWENDIG`-Zeilen für B66 (B11–B16, B21–B26, B31–B35), ohne Toleranz. Am Modell ändert sich dadurch nichts.
+
+Die 177 LP bei B65 sind keine lose Schwelle, sondern genau alles außer dem Kolloquium selbst: 180 − 3 = 177. Das deckt sich mit RStPO §28 Abs. 1 Buchstabe b, wonach zum Kolloquium alle erforderlichen Module abgeschlossen sein müssen.
 
 **Modulart: Realität statt StuPO (E9).** In Anlage 2 sind B16, B34, B41, B43, B54, B56, B63 und B64 als WP markiert. In der Praxis wählt man bei B34, B43 und B56 aber kein anderes Modul. Bei den Projektmodulen wählt man nur Projekt oder Team, die Lehrveranstaltung ist dieselbe. Das Fachpraktikum ist laut StuPO §11 Abs. 1 sogar ein „Pflichtpraktikum“. Prof. Mihaljevic hat empfohlen, sich hier an der Realität zu orientieren (Antwort vom 13.10.2026). Deshalb gilt in diesem Modell:
 - `P`: B34, B43, B56 und, nach derselben Logik, B16, B26, B63, B64 (fester Platz im Plan, gewählt wird nur der Inhalt)
 - `WP`: nur B41 und B54
 
-Die Einordnung von B16, B26, B63 und B64 ist noch bei Prof. Mihaljevic angefragt. Diese Abweichung von der StuPO ist gewollt und wird im Wiki dokumentiert.
+Die Einordnung von B16, B26, B63 und B64 ist entschieden: Sie sind `P`. Bei allen vieren liegt der Platz im Studienplan fest, gewählt wird nur der Inhalt, und genau dafür gibt es `mit_auswahl` (E10). Diese Abweichung von der StuPO ist gewollt und wird im Wiki dokumentiert.
 
 **Auswahl bei Modulen (E10).** Bei Modulen mit `mit_auswahl = true` geben Studierende an, was sie konkret belegen:
 
@@ -364,13 +389,25 @@ Diese Regeln prüft der Service:
 
 **AWE-Bereich (E11).** `bereich = AWE` zeigt Studierenden, dass ein Modul zum allgemeinwissenschaftlichen Bereich gehört (B16, B26, B63, B64; StuPO §9, Anlage 5). Das ist unabhängig von `art`, denn ob ein Modul Pflicht ist und zu welchem Bereich es gehört, sind zwei verschiedene Fragen.
 
-**Benotet und unbenotet.** Die Spalte `modul.benotet` sagt, ob das Modul eine Note hat. Laut StuPO §10 Abs. 1 sind alle Module benotet außer dem Fachpraktikum, das nur „mit/ohne Erfolg“ bewertet wird (§11 Abs. 7). `modul.zaehlt_in_x1` sagt getrennt davon, ob die Note in die Gesamtnote eingeht. B11–B16 sind benotet, zählen aber nicht (StuPO §14 Abs. 3, §15). Bei `benotet = false` bleibt `leistung.note` leer.
+**Benotet und unbenotet.** Die Spalte `modul.benotet` sagt, ob das Modul eine Note hat. Laut StuPO §10 Abs. 1 sind alle Module benotet außer dem Fachpraktikum, das nur „mit/ohne Erfolg“ bewertet wird (§11 Abs. 7). Bei `benotet = false` bleibt `leistung.note` leer.
+
+**Was in die Größe X1 eingeht (E24).** `modul.zaehlt_in_x1` sagt getrennt davon, ob die Note in die Größe X1 der Gesamtnote eingeht. Die Gesamtnote ist X = 0,75·X1 + 0,15·X2 + 0,10·X3, wobei X2 die Bachelorarbeit und X3 das Kolloquium ist (StuPO §15 Abs. 1). `zaehlt_in_x1 = false` gilt deshalb für neun Module:
+
+| Modul(e) | Grund |
+|---|---|
+| B11–B16 | Module des 1. Fachsemesters (StuPO §14 Abs. 3, RStPO §17 Abs. 6) |
+| B43 Fachpraktikum | unbenotet, es gibt keine Note zum Mitteln |
+| B66 Bachelorarbeit | geht als eigene Größe X2 ein, würde sonst doppelt zählen |
+| B65 Bachelorseminar und Abschlusskolloquium | geht als eigene Größe X3 ein |
+
+Gegenprobe: Die Gewichtungstabelle in StuPO §15 Abs. 2 summiert sich auf 115 LP. Die neun Module oben ergeben zusammen 65 LP, zusammen also die 180 LP des Studiums. Stimmt ein einzelner LP-Wert nicht, geht diese Rechnung nicht auf; `StupoSeedTest` prüft beide Summen.
 
 **Wintersemester, Sommersemester und Turnus (E13).** `semester.art` hält `WS` oder `SS`. Das Studium beginnt nur im Wintersemester (StuPO §8 Abs. 1). Die StuPO nennt keinen Turnus, laut RStPO §4 Abs. 2 steht er in den Modulbeschreibungen. Bis diese vorliegen, wird `modul.turnus` aus dem Fachsemester befüllt: ungerade = `WS`, gerade = `SS`. Der Teilzeitplan in Anlage 3 bestätigt diese Zuordnung. Einzelne Werte können später ohne Codeänderung angepasst werden.
 
 **Widersprüche in der StuPO (E16).** An einigen Stellen widerspricht sich die StuPO. Dann gilt Anlage 2, weil laut §8 Abs. 2 das Studium nach dieser Anlage durchgeführt wird. Ausnahme: die Modulart (E9).
 - B26: Anlage 2 sagt P, Anlage 5 sagt WP → P
-- B56: Anlage 6 nennt einmal 5 LP, alle anderen Stellen 6 → 6 LP
+- B56: Anlage 6 führt das Modul **zweimal** auf, auf S. 324 mit 5 LP („Projects in Business“) und auf S. 325 mit 6 LP („Business Projects“). Anlage 2, die Gewichtungstabelle in §15 und die Semestersumme von 31 LP sagen übereinstimmend 6 → **6 LP**. Die 5 in Anlage 6 ist ein Druckfehler
+- B24 heißt „Webtechnologien“: so in Anlage 2, in Anlage 6 und in der Liste der Modulgruppen in §14 Abs. 2. Hier gibt es keinen Widerspruch
 - EV von B31 und B53 weichen im Teilzeitplan (Anlage 3) ab → Anlage 2
 - B43: Anlage 2 sagt WP, §11 Abs. 1 sagt „Pflichtpraktikum“ → P (siehe E9)
 
@@ -459,7 +496,7 @@ classDiagram
     }
     class PlanEintrag {
         Integer planEintragId
-        Nutzende nutzende
+        Studierende studierende
         Modul modul
         Wahlangebot wahlangebot
         String kursCode
@@ -468,7 +505,7 @@ classDiagram
     }
     class Leistung {
         Integer leistungId
-        Nutzende nutzende
+        Studierende studierende
         Modul modul
         Wahlangebot wahlangebot
         String kursCode
@@ -535,11 +572,11 @@ classDiagram
     Modul "0..1" --> "*" Wahlangebot : empfohlene Voraussetzung
     Nutzende "1" --> "0..1" Studierende
     Semester "1" --> "*" Studierende : Startsemester
-    Nutzende "1" --> "*" PlanEintrag
+    Studierende "1" --> "*" PlanEintrag
     Modul "1" --> "*" PlanEintrag
     Wahlangebot "0..1" --> "*" PlanEintrag
     Semester "1" --> "*" PlanEintrag
-    Nutzende "1" --> "*" Leistung
+    Studierende "1" --> "*" Leistung
     Modul "1" --> "*" Leistung
     Wahlangebot "0..1" --> "*" Leistung
     Semester "0..1" --> "*" Leistung
@@ -551,30 +588,37 @@ classDiagram
 
 `Schwere` hat die Werte `FEHLER` (notwendig, oder LP unter `min_lp − toleranz_lp`) und `WARNUNG` (empfohlen, oder LP im Toleranzbereich). Der Name `PlanPruefer` ist ein Vorschlag für die Klasse, die Pläne gegen die Voraussetzungen prüft.
 
-## 8. Entscheidungen zur Bestätigung durch das Team
+## 8. Entscheidungen
 
-| Nr. | Punkt | Vorschlag |
+Alle Punkte sind im Team entschieden und, soweit sie die Datenbank betreffen, in `V2__stupo_seed.sql` umgesetzt.
+
+| Nr. | Punkt | Entscheidung |
 |---|---|---|
 | E1 | Spalte `modul.benotet` | ergänzen. Bestätigt durch StuPO §10 Abs. 1: nur das Fachpraktikum ist unbenotet |
-| E2 | Wann gilt eine notwendige Voraussetzung als erfüllt | bestanden **oder** in einem früheren Semester geplant und nicht `NICHT_BESTANDEN`. Es zählt das Ergebnis, nicht das Datum, weil Noten oft erst nach Semesterbeginn kommen (RStPO §16 Abs. 5, §17 Abs. 7). Gilt auch für LP-Voraussetzungen. „Erfüllt ja/nein“ wird berechnet, nicht gespeichert. Offen: Speichern bei nicht erfüllter NV erlauben oder blockieren? |
-| E3 | Zeitslots und Gruppen (`CourseOffering`, `CourseGroup`, `Meeting`) | weglassen, Frage im nächsten Review stellen |
+| E2 | Wann gilt eine notwendige Voraussetzung als erfüllt, und was passiert dann | bestanden **oder** in einem früheren Semester geplant und nicht `NICHT_BESTANDEN`. Es zählt das Ergebnis, nicht das Datum, weil Noten oft erst nach Semesterbeginn kommen (RStPO §16 Abs. 5, §17 Abs. 7). „Erfüllt ja/nein“ wird berechnet, nicht gespeichert.<br>**Speichern wird nie blockiert:** Der Plan lässt sich auch mit nicht erfüllter NV sichern, das Backend liefert die Verstöße mit und das Frontend zeigt das Modul grau mit Meldung. Sonst könnten Studierende während der Belegung nicht weiterplanen, solange nur die Note fehlt |
+| E3 | Zeitslots und Gruppen (`CourseOffering`, `CourseGroup`, `Meeting`) | weglassen. **Zeitüberschneidungen sind nicht im Projektumfang**, geprüft werden nur die Voraussetzungen aus der StuPO (Folie 29). Das Modell bleibt bei 9 Tabellen |
 | E4 | `StuPO` als eigene Tabelle | weglassen, Modell gilt für StuPO 2024 |
 | E5 | Fehlversuche (`ModuleAttempt` im Ticket) | keine eigene Tabelle, `leistung` hat eine Zeile pro Modul (RStPO §18 Abs. 1: Die Wiederholung ersetzt die alte Note). Neu: Zähler `anzahl_versuche` (0–4) für Warnungen vor dem letzten Versuch (RStPO §18 Abs. 3) |
 | E6 | Sprachvarianten laut StuPO-Anlage 5 (B63 + B64 als ein 4-LP-Modul) | in v1 nicht modelliert. Eine zweite Fremdsprache oder vertiefte Sprache bei B63/B64 wird über `kurs_code` eingetragen |
 | E7 | Namen in Tabellen und Klassen | Deutsch wie in der Skizze, das Ticket nennt englische Namen |
 | E8 | Gendergerechte Sprache | Texte nutzen Unterstrich-Formen oder neutrale Begriffe wie in den Projektfolien (Professor_in, Studierende, Personen im Team). Technische Bezeichner sind ebenfalls neutral: Tabelle `nutzende`, Rollenwerte `STUDIERENDE` und `PROFESSOR_IN` |
-| E9 | Modulart nach Realität statt StuPO | B34, B43, B56 sowie B16, B26, B63, B64 = `P`, nur B41/B54 = `WP` (Empfehlung Prof. Mihaljevic, 13.10.2026). B16/B26/B63/B64 noch bei ihr angefragt |
+| E9 | Modulart nach Realität statt StuPO | **Entschieden:** B34, B43, B56 sowie B16, B26, B63, B64 = `P`, nur B41 und B54 = `WP` (Empfehlung Prof. Mihaljevic, 13.10.2026). Bei den sieben `P`-Modulen liegt der Platz im Studienplan fest, gewählt wird nur der Inhalt über `mit_auswahl` |
 | E10 | Auswahl bei Modulen | neue Spalte `modul.mit_auswahl`. Liste plus eigene Eingabe für B41/B54 und B16/B26, bei AWE nur eigene Eingabe mit Pflicht-Veranstaltungsnummer. Neue Spalten `kurs_code` und `kurs_titel` in `plan_eintrag` und `leistung` |
 | E11 | AWE | neue Spalte `modul.bereich` (`FACH`/`AWE`), nicht als dritter Wert in `art` |
 | E12 | SWS | getrennt in `sws_vorlesung` und `sws_uebung`. PS-Stunden zählen als Übung |
 | E13 | Turnus | neue Spalte `modul.turnus` (`WS`/`SS`/`BEIDE`), vorerst aus dem Fachsemester befüllt |
 | E14 | Bachelorarbeit | `toleranz_lp` als Warnbereich (141–150 LP) und 17 zusätzliche NV-Zeilen für Semester 1–3 (RStPO §25). B65: NV B66 und 177 LP |
+| E23 | Fachpraktikum setzt 60 LP voraus | neue NV-Zeile für B43 mit `min_lp` 60 und `toleranz_lp` 0 (Anlage 2, StuPO §11 Abs. 4). In v2 übersehen, deshalb nachgetragen |
+| E24 | Umfang von `zaehlt_in_x1` | `false` nicht nur bei B11–B16, sondern auch bei B43 (unbenotet), B66 (Größe X2) und B65 (Größe X3). Probe: die übrigen Module ergeben die 115 LP aus der Tabelle in StuPO §15 |
+| E25 | SWS ohne Angabe | als `0` führen, nicht als NULL. Betrifft B43 und B66. Damit bleibt die NOT-NULL-Bedingung aus V1 unverändert und es braucht keine Schema-Migration |
+| E26 | Sprachangebote je Niveau | eine Zeile pro Sprache **und** Niveau (10 Zeilen), weil dieselbe Sprache in B16 und B26 auf unterschiedlichen GER-Niveaus läuft. `niveaustufe` trennt die Module (`1a` = B16, `1b` = B26), das GER-Niveau steht in `code` und `bezeichnung`. „Gleiche Sprache in B16 und B26“ prüft der Service über das Präfix vor dem Unterstrich |
+| E27 | Zielzeile von `plan_eintrag.nutzende_id` und `leistung.nutzende_id` | beide zeigen auf **`studierende`**, nicht auf `nutzende`. Nur Studierende planen Module und erbringen Leistungen. Da eine Person mit der Rolle `PROFESSOR_IN` keine Zeile in `studierende` hat, kann sie schon durch den Fremdschlüssel keinen Plan und keine Leistung bekommen; das muss der Service nicht zusätzlich prüfen. So in V1 umgesetzt, die Diagramme in diesem Dokument zeigten bis jetzt fälschlich `nutzende` |
 | E15 | Erlaubte Noten | nur Werte laut RStPO §17 Abs. 1, als CHECK-Constraint |
 | E16 | Widersprüche in der StuPO | es gilt Anlage 2, außer bei der Modulart (E9) |
 | E17 | Geltungsbereich | nur Vollzeitstudium. Teilzeitplan (Anlage 3) nicht abgebildet |
 | E18 | Aktuelles Semester | feste Regel im Code (WS 1.10.–31.3., SS 1.4.–30.9.), keine Datumsspalten. Entscheidet nicht über erfüllte Voraussetzungen (siehe E2) |
 | E19 | Semesterzeilen | legt die App automatisch an, wenn sie gebraucht werden |
-| E20 | Rolle `PROFESSOR_IN` | nicht selbst wählbar, wird von Hand gesetzt. Frage für das nächste Review: lieber über E-Mail-Adressen? |
+| E20 | Rolle `PROFESSOR_IN` | **Entschieden:** nicht selbst wählbar, wird von Hand in der Datenbank gesetzt. Eine automatische Vergabe über E-Mail-Adressen ist ein mögliches Nice-to-have, für das Modell ändert sich dadurch nichts |
 | E21 | Anerkannte Leistungen | als `BESTANDEN` eintragen, kein eigener Status. Unbenotet anerkannt = 4,0 (RStPO §32 Abs. 3) |
 | E22 | Weitere Bedingungen | CHECK, UNIQUE und Service-Regeln laut Abschnitt 3 |
 | E23 | Reihenfolge von Semestern | immer über `jahr` und `art` vergleichen, nie über `semester_id` |
