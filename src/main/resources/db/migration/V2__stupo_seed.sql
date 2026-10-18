@@ -23,9 +23,10 @@
 --   E16  bei Widersprüchen gilt Anlage 2
 --
 -- Abweichungen vom Ticket-Text, im Team entschieden:
---   - SWS von B43 und B66 werden als 0 geführt, nicht als NULL
---   - zaehlt_in_x1 ist zusätzlich bei B43, B65 und B66 false
---   - Sprachangebote werden je Niveau gespeichert, nicht je Sprache
+--   E23  B43 setzt 60 LP voraus (im Ticket und in v2 des Modells übersehen)
+--   E24  zaehlt_in_x1 ist zusätzlich bei B43, B65 und B66 false
+--   E25  SWS von B43 und B66 werden als 0 geführt, nicht als NULL
+--   E26  Sprachangebote werden je Niveau gespeichert, nicht je Sprache
 
 
 -- ---------------------------------------------------------------------------
