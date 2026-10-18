@@ -1,6 +1,6 @@
 # ER-Modell und Klassenentwurf (Entwurf v2, 9 Tabellen)
 
-**Status:** Bestätigt. Die Entscheidungen E1 bis E26 in Abschnitt 8 sind im Team beschlossen und in der Migration `V2__stupo_seed.sql` umgesetzt. Offen sind nur noch zwei Punkte, die nicht das Datenmodell betreffen, sondern das Verhalten der App (E2) und eine Frage an die Betreuer_innen (E3); beide sind unten als solche gekennzeichnet.
+**Status:** Bestätigt. Die Entscheidungen E1 bis E26 in Abschnitt 8 sind im Team beschlossen und in der Migration `V2__stupo_seed.sql` umgesetzt. Es gibt keine offenen Punkte mehr.
 
 Quellen:
 - StuPO Informatik und Wirtschaft vom 10. Januar 2024 (AMBl. HTW Berlin Nr. 08/24, in Kraft ab 1. Oktober 2024)
@@ -46,7 +46,7 @@ Das Ticket nennt andere Entitäten als die 9 Tabellen dieses Modells. Die Zuordn
 | CourseOffering, CourseGroup, Meeting | nicht enthalten | Die Folien verlangen Planung nach Modulen und Semestern und die Prüfung der Voraussetzungen (Folie 29). Zeitüberschneidungen werden nicht gefordert, und in den vorliegenden Dokumenten gibt es keine Termine oder Räume als Datenquelle. |
 | (nicht im Ticket) | `modul_teil`, `wahlangebot` | `modul_teil` für B34/B35/B65, `wahlangebot` für die Auswahl bei B16/B26 und B41/B54 |
 
-Das Modell bleibt bei diesen 9 Tabellen (E3). Für das nächste Review mit den Betreuer_innen bleibt eine Frage offen: „Soll der Stundenplan auch Zeitüberschneidungen prüfen oder nur die Voraussetzungen aus der StuPO?“ Lautet die Antwort „auch Zeitüberschneidungen“, kommen Tabellen für Veranstaltungen und Termine dazu; bei „nur Voraussetzungen“ ändert sich nichts.
+Das Modell bleibt bei diesen 9 Tabellen. **Zeitüberschneidungen sind nicht im Umfang des Projekts (E3):** Der Stundenplan prüft nur die Voraussetzungen aus der StuPO. Das deckt sich mit Folie 29, und in den vorliegenden Dokumenten gibt es ohnehin keine Termine oder Räume als Datenquelle. Tabellen für Veranstaltungen, Gruppen und Termine entfallen damit endgültig.
 
 ## 2. ER-Diagramm
 
@@ -343,7 +343,18 @@ So bleibt Vorausplanen möglich, und eine bekannte durchgefallene Prüfung block
 - NV nicht erfüllt → rote Fehlermeldung
 - EV nicht erfüllt → gelbe Warnung
 
-Noch offen (E2), betrifft aber nur das Verhalten der App und nicht das Datenmodell: Kann ein Modul mit nicht erfüllter NV trotzdem im Plan gespeichert werden (grau + Fehler), oder blockiert das Backend das Speichern? Beide Varianten laufen mit diesem Modell, die Entscheidung kann also später fallen.
+**Speichern wird nie blockiert (E2).** Ein Modul mit nicht erfüllter notwendiger Voraussetzung lässt sich trotzdem in den Plan eintragen. Das Backend nimmt den `plan_eintrag` an und gibt die Verstöße im Response mit, das Frontend zeigt das Modul grau mit der passenden Meldung an. Es gibt also keinen Zustand, in dem Studierende ihren Plan nicht speichern können.
+
+Der Grund ist derselbe wie bei E2 oben: Wenn die Belegung für das nächste Semester startet, stehen die Noten des laufenden Semesters oft noch aus (RStPO §16 Abs. 5, §17 Abs. 7). Würde das Backend blockieren, könnten Studierende genau in dieser Zeit nicht weiterplanen, obwohl nur die Note fehlt. Ob geflaggt wird, hängt deshalb am Ergebnis und nicht am Datum:
+
+| Stand beim vorausgesetzten Modul | Plan speicherbar | Anzeige |
+|---|---|---|
+| `BESTANDEN` | ja | kein Hinweis |
+| geplant, noch kein Ergebnis | ja | kein Fehler, Hinweis „Ergebnis ausstehend“ |
+| `NICHT_BESTANDEN` | ja | grau, rote Fehlermeldung |
+| weder bestanden noch geplant | ja | grau, rote Fehlermeldung |
+
+Damit ist die Prüfung reine Information für die Studierenden und keine Sperre.
 
 **Voraussetzungen auf Leistungspunkte.** Drei Module setzen keine einzelnen Module voraus, sondern eine Mindestzahl an LP:
 - B43 Fachpraktikum: `min_lp` 60, `toleranz_lp` 0 (Anlage 2 und StuPO §11 Abs. 4). **Neu in E23**, in v2 übersehen.
@@ -579,13 +590,13 @@ classDiagram
 
 ## 8. Entscheidungen
 
-Alle Punkte sind im Team entschieden und in `V2__stupo_seed.sql` umgesetzt. Zwei Punkte sind bewusst nicht geschlossen: **E2** betrifft das Verhalten der App und nicht das Datenmodell, **E3** ist eine Frage an die Betreuer_innen.
+Alle Punkte sind im Team entschieden und, soweit sie die Datenbank betreffen, in `V2__stupo_seed.sql` umgesetzt.
 
 | Nr. | Punkt | Entscheidung |
 |---|---|---|
 | E1 | Spalte `modul.benotet` | ergänzen. Bestätigt durch StuPO §10 Abs. 1: nur das Fachpraktikum ist unbenotet |
-| E2 | Wann gilt eine notwendige Voraussetzung als erfüllt | **Entschieden:** bestanden **oder** in einem früheren Semester geplant und nicht `NICHT_BESTANDEN`. Es zählt das Ergebnis, nicht das Datum, weil Noten oft erst nach Semesterbeginn kommen (RStPO §16 Abs. 5, §17 Abs. 7). Gilt auch für LP-Voraussetzungen. „Erfüllt ja/nein“ wird berechnet, nicht gespeichert.<br>**Noch offen (betrifft nur die App, nicht das Datenmodell):** Darf ein Modul mit nicht erfüllter NV trotzdem gespeichert werden, oder blockiert das Backend das Speichern? Beide Varianten laufen mit diesem Modell |
-| E3 | Zeitslots und Gruppen (`CourseOffering`, `CourseGroup`, `Meeting`) | **Entschieden:** weglassen, das Modell bleibt bei 9 Tabellen.<br>**Noch offen (Frage an die Betreuer_innen):** Soll der Stundenplan auch Zeitüberschneidungen prüfen? Bei „nur Voraussetzungen“ bleibt alles wie hier beschrieben |
+| E2 | Wann gilt eine notwendige Voraussetzung als erfüllt, und was passiert dann | bestanden **oder** in einem früheren Semester geplant und nicht `NICHT_BESTANDEN`. Es zählt das Ergebnis, nicht das Datum, weil Noten oft erst nach Semesterbeginn kommen (RStPO §16 Abs. 5, §17 Abs. 7). „Erfüllt ja/nein“ wird berechnet, nicht gespeichert.<br>**Speichern wird nie blockiert:** Der Plan lässt sich auch mit nicht erfüllter NV sichern, das Backend liefert die Verstöße mit und das Frontend zeigt das Modul grau mit Meldung. Sonst könnten Studierende während der Belegung nicht weiterplanen, solange nur die Note fehlt |
+| E3 | Zeitslots und Gruppen (`CourseOffering`, `CourseGroup`, `Meeting`) | weglassen. **Zeitüberschneidungen sind nicht im Projektumfang**, geprüft werden nur die Voraussetzungen aus der StuPO (Folie 29). Das Modell bleibt bei 9 Tabellen |
 | E4 | `StuPO` als eigene Tabelle | weglassen, Modell gilt für StuPO 2024 |
 | E5 | Fehlversuche (`ModuleAttempt` im Ticket) | keine eigene Tabelle, `leistung` hat eine Zeile pro Modul (RStPO §18 Abs. 1: Die Wiederholung ersetzt die alte Note). Neu: Zähler `anzahl_versuche` (0–4) für Warnungen vor dem letzten Versuch (RStPO §18 Abs. 3) |
 | E6 | Sprachvarianten laut StuPO-Anlage 5 (B63 + B64 als ein 4-LP-Modul) | in v1 nicht modelliert. Eine zweite Fremdsprache oder vertiefte Sprache bei B63/B64 wird über `kurs_code` eingetragen |
