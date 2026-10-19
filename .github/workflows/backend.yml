@@ -1,0 +1,33 @@
+# Baut das Backend und führt alle Tests aus, bei jedem Push und jedem PR
+name: Backend CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Code auschecken
+        uses: actions/checkout@v4
+
+      - name: Java 21 einrichten
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # verify = kompilieren, Tests (inkl. Testcontainers), JaCoCo-Bericht
+      - name: Build und Tests
+        run: ./mvnw -B verify
+
+      # auch bei roten Tests hochladen, damit man den Bericht ansehen kann
+      - name: JaCoCo-Bericht hochladen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-report
+          path: target/site/jacoco/ 
