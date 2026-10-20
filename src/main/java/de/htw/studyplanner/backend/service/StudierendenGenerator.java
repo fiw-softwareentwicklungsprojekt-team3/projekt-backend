@@ -169,6 +169,7 @@ public class StudierendenGenerator {
         Set<String> bestanden = new HashSet<>();
         Map<String, Integer> versuche = new HashMap<>();
         Set<String> schonGewaehlteWp = new HashSet<>();
+        String sprachePraefix = null;
         int lp = 0;
 
         for (Semester s : alleSemester) {
@@ -232,7 +233,9 @@ public class StudierendenGenerator {
                         if (AWE_FREITEXT.contains(m.code())) {
                             kursTitel = AWE_TITEL.get(random.nextInt(AWE_TITEL.size()));
                         } else if ("AWE".equals(m.bereich())) {
-                            wahlangebot = waehle(sprachen.get(m.niveaustufe()), random);
+                            wahlangebot = waehleSprache(
+                                    sprachen.get(m.niveaustufe()), sprachePraefix, random);
+                            sprachePraefix = wahlangebot.substring(0, wahlangebot.indexOf('_'));
                         } else {
                             wahlangebot = waehleOhneWiederholung(wpAngebote, schonGewaehlteWp, random);
                         }
@@ -390,7 +393,19 @@ public class StudierendenGenerator {
                 .lp();
     }
 
-    private String waehle(List<String> angebote, Random random) {
+    /**
+     * E26: B26 führt dieselbe Sprache fort wie B16. Verglichen wird das Präfix
+     * vor dem Unterstrich, nicht der ganze Code: EN_B2.1 und EN_B2.2 gehören
+     * zusammen, EN_B2.1 und FR_B2.1 nicht.
+     */
+    private String waehleSprache(List<String> angebote, String praefix, Random random) {
+        if (praefix != null) {
+            for (String a : angebote) {
+                if (a.startsWith(praefix + "_")) {
+                    return a;
+                }
+            }
+        }
         return angebote.get(random.nextInt(angebote.size()));
     }
 

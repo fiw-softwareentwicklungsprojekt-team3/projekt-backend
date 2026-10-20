@@ -158,6 +158,16 @@ class StudierendenGeneratorTest {
         assertThat(k.seed()).isEqualTo(42L);
     }
 
+    @Test
+    void b26FuehrtDieselbeSpracheFortWieB16() {
+        // E26: verglichen wird das Präfix vor dem Unterstrich
+        assertThat(zaehle("SELECT count(*) FROM leistung a "
+                + "JOIN leistung b ON b.nutzende_id = a.nutzende_id AND b.modul_code = 'B26' "
+                + "WHERE a.modul_code = 'B16' "
+                + "  AND split_part(a.wahlangebot_code, '_', 1) "
+                + "   <> split_part(b.wahlangebot_code, '_', 1)")).isZero();
+    }
+
     private String signatur() {
         return jdbc.queryForObject(
                 "SELECT md5(string_agg(n.email || ':' || l.modul_code || ':' || l.status || ':' "
