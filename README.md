@@ -2,6 +2,8 @@
 
 [Zur Architektur-Dokumentation](docs/architektur.md)
 
+![Backend CI](https://github.com/fiw-softwareentwicklungsprojekt-team3/projekt-backend/actions/workflows/backend.yml/badge.svg)
+
 # Studyplanner Backend
 
 Dieses Projekt nutzt Java 21 und Spring Boot 3.3.4.
