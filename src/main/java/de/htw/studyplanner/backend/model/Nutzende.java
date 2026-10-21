@@ -68,6 +68,13 @@ public class Nutzende {
     @Column(name = "rolle", nullable = false, length = 15)
     private Rolle rolle;
 
+    /**
+     * Kennzeichnung für synthetisch generierte Testdaten (Ticket E1.5/E1.6).
+     * Echte Accounts, die von Hand angelegt werden, sind standardmäßig false.
+     */
+    @Column(name = "is_synthetic", nullable = false)
+    private boolean isSynthetic = false;
+
     protected Nutzende() {
         // JPA benötigt einen no-args Konstruktor.
     }
@@ -79,9 +86,17 @@ public class Nutzende {
      * Rolle erzeugt. Die ID wird erst beim Speichern von der Datenbank gesetzt.
      */
     public Nutzende(String email, String passwortHash, Rolle rolle) {
+        this(email, passwortHash, rolle, false);
+    }
+
+    /**
+     * Konstruktor mit Angabe, ob es sich um synthetische Testdaten handelt.
+     */
+    public Nutzende(String email, String passwortHash, Rolle rolle, boolean isSynthetic) {
         this.email = email;
         this.passwortHash = passwortHash;
         this.rolle = rolle;
+        this.isSynthetic = isSynthetic;
     }
 
     /**
@@ -144,12 +159,27 @@ public class Nutzende {
         this.rolle = rolle;
     }
 
+    /**
+     * Gibt an, ob es sich um einen synthetisch generierten Testnutzer handelt.
+     */
+    public boolean isSynthetic() {
+        return isSynthetic;
+    }
+
+    /**
+     * Setzt die Markierung für synthetische Testdaten.
+     */
+    public void setSynthetic(boolean synthetic) {
+        this.isSynthetic = synthetic;
+    }
+
     @Override
     public String toString() {
         return "Nutzende{" +
                 "nutzendeId=" + nutzendeId +
                 ", email='" + email + '\'' +
                 ", rolle=" + rolle +
+                ", isSynthetic=" + isSynthetic +
                 '}';
     }
 }

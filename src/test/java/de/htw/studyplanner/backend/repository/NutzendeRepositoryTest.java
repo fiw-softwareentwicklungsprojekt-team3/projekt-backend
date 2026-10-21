@@ -35,8 +35,8 @@ class NutzendeRepositoryTest {
 
     @Test
     void findetNutzendePerEmailUndSpeichertMitStudentenDaten() {
-        Semester semester = new Semester(2026, SemesterArt.WS);
-        Semester gespeichertesSemester = semesterRepository.saveAndFlush(semester);
+        Semester gespeichertesSemester = semesterRepository.findByJahrAndArt(2026, SemesterArt.WS)
+                .orElseGet(() -> semesterRepository.saveAndFlush(new Semester(2026, SemesterArt.WS)));
 
         Nutzende nutzende = new Nutzende("max.mustermann@htw-berlin.de", "geheimesPasswort", Rolle.STUDIERENDE);
         Nutzende gespeicherteNutzende = nutzendeRepository.saveAndFlush(nutzende);
@@ -49,6 +49,7 @@ class NutzendeRepositoryTest {
         assertThat(gefunden.getEmail()).isEqualTo("max.mustermann@htw-berlin.de");
         assertThat(gefunden.getRolle()).isEqualTo(Rolle.STUDIERENDE);
         assertThat(gefunden.getPasswortHash()).isEqualTo("geheimesPasswort");
+        assertThat(gefunden.isSynthetic()).isFalse();
     }
 
     @Test
