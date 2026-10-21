@@ -78,8 +78,10 @@ class FlywayMigrationTest {
         gibTestmodul("TST1", 1, 5);
         jdbc.update("INSERT INTO nutzende (nutzende_id, email, passwort_hash) "
                 + "VALUES (1, 'test@htw-berlin.de', 'hash')");
-        jdbc.update("INSERT INTO semester (semester_id, jahr, art) VALUES (1, 2026, 'WS')");
-        jdbc.update("INSERT INTO studierende (nutzende_id, startsemester_id) VALUES (1, 1)");
+        Integer semesterId = jdbc.queryForObject(
+        "INSERT INTO semester (jahr, art) VALUES (2099, 'WS') RETURNING semester_id",
+        Integer.class);
+        jdbc.update("INSERT INTO studierende (nutzende_id, startsemester_id) VALUES (1, ?)", semesterId);
 
         // gültig
         jdbc.update("INSERT INTO leistung (nutzende_id, modul_code, status, note) "

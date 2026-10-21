@@ -55,3 +55,50 @@ Die Projekt-Datenbank auf dem HTW-Server gehört <Name>. Nur diese Person starte
 5. Tabellen und Spalten heißen deutsch wie im Datenmodell (Entscheidung E7).
 
 **Was tun bei „Validate failed: Migration checksum mismatch“?** Lokal: `docker compose down -v` und neu starten. Danach die Änderung als neue Migration schreiben statt die alte Datei zu ändern.
+
+## Synthetische Studierendendaten (Generator)
+
+Für das Professor:innen-Dashboard und die Prognose brauchen wir Studierende mit
+Noten. Echte Daten gibt es nicht, deshalb erzeugt ein Generator sie.
+
+**Aufruf:**
+
+```
+docker compose up -d
+./mvnw spring-boot:run -Dspring-boot.run.profiles=generator
+```
+
+Ohne das Profil `generator` läuft der Generator **nicht**. Das ist Absicht:
+sonst würde bei jedem normalen Start Testdaten angelegt, auch auf dem
+HTW-Server.
+
+**Was erzeugt wird:** fünf Kohorten (Startjahre 2021 bis 2025, jeweils
+Wintersemester) mit je 30 bis 60 Personen, dazu ein Studienverlauf Semester für
+Semester mit Noten, Wiederholungen und Wahlangeboten.
+
+**Parameter** stehen in `StudierendenGenerator.Konfiguration`:
+
+| Parameter | Standard | Bedeutung |
+|---|---|---|
+| `seed` | `42` | fester Startwert, gleicher Seed erzeugt gleiche Daten |
+| `kohortenJahre` | 2021–2025 | Startjahre der Kohorten (immer WS) |
+| `minProKohorte` / `maxProKohorte` | 30 / 60 | Kohortengröße |
+| `durchfallquote` | `0.10` | Anteil nicht bestandener Versuche bei benoteten Modulen |
+| `maxVersuche` | `4` | Versuche je Modul (RStPO) |
+| `lpZielProSemester` | `30` | LP, die pro Semester angestrebt werden |
+
+**Mehrfaches Ausführen** ist unproblematisch: der Generator löscht zu Beginn die
+zuvor erzeugten Daten (alles mit `nutzende.is_synthetic = true`) und legt sie neu
+an. Von Hand angelegte Accounts bleiben dabei erhalten.
+
+**Welche Regeln gelten:** Die erzeugten Daten sind abgeschlossene Historie, keine
+Planung. Beim Studienplan darf laut E2 auch ohne erfüllte Voraussetzung geplant
+werden (das Frontend weist nur darauf hin) — hier dagegen gelten die
+StuPO-Regeln strikt: ein Modul wird nur belegt, wenn seine NOTWENDIG-Vor­aus­set­zun­gen
+zu diesem Zeitpunkt erfüllt sind, LP zählen nur aus bestandenen Modulen, und der
+Turnus (WS/SS) wird beachtet.
+
+**Hinweis zur Durchfallquote im Dashboard:** Weil eine Wiederholung dieselbe
+Zeile überschreibt, steht in `leistung.status` immer nur der aktuelle Stand. Eine
+Durchfallquote je Modul lässt sich deshalb nicht aus `status` ablesen, sondern
+nur über `anzahl_versuche > 1`.
