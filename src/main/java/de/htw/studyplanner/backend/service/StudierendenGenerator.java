@@ -84,16 +84,19 @@ public class StudierendenGenerator {
             int maxProKohorte,
             double durchfallquote,
             int maxVersuche,
-            int lpZielProSemester) {
+            int lpZielProSemester,
+            int letztesJahr,
+            String letzteArt) {
 
         public static Konfiguration standard() {
             return new Konfiguration(
                     42L,
                     List.of(2021, 2022, 2023, 2024, 2025),
                     30, 60,
-                    0.15,
+                    0.10,
                     4,
-                    30);
+                    30,
+                    2026, "WS");
         }
     }
 
@@ -110,7 +113,7 @@ public class StudierendenGenerator {
                          boolean benotet) {}
 
     /** Entweder vorausgesetztesModul oder minLp ist gesetzt, nie beides. */
-    private record Voraussetzung(String vorausgesetztesModul, Integer minLp) {}
+    private record Voraussetzung(String vorausgesetztesModul, Integer minLp, boolean gleichesSemester) {}
 
     // ------------------------------------------------------------------
     // Einstieg
@@ -126,6 +129,8 @@ public class StudierendenGenerator {
         loescheFrueherErzeugteDaten();
 
         List<Semester> semester = ladeSemester();
+        semester = semester.subList(0,
+        semester.indexOf(findeSemester(semester, k.letztesJahr(), k.letzteArt())) + 1);
         List<Modul> module = ladeModule();
         Map<String, List<Voraussetzung>> voraussetzungen = ladeNotwendigeVoraussetzungen();
         List<String> wpAngebote = ladeWahlangebote("WP", null);
@@ -172,11 +177,11 @@ public class StudierendenGenerator {
         String sprachePraefix = null;
         int lp = 0;
 
-        for (Semester s : alleSemester) {
-            if (s.id() < start.id()) {
-                continue;
-            }
-            int studiensemester = s.id() - start.id() + 1;
+        int startIndex = alleSemester.indexOf(start);
+        for (int i = startIndex; i < alleSemester.size(); i++) {
+            Semester s = alleSemester.get(i);
+            boolean laufendesSemester = (i == alleSemester.size() - 1);
+            int studiensemester = i - startIndex + 1;
 
             List<Modul> kandidaten = new ArrayList<>();
             // Wiederholungen haben Vorrang: ohne sie bleibt die Person hängen.
@@ -193,13 +198,15 @@ public class StudierendenGenerator {
                 if (!versuche.containsKey(m.code())
                         && m.fachsemester() <= studiensemester
                         && passtInsSemester(m, s)
+                        && !hatGleichesSemesterVoraussetzung(m, voraussetzungen)
                         && voraussetzungenErfuellt(m, bestanden, lp, voraussetzungen)) {
                     kandidaten.add(m);
                 }
             }
-
-            // LP erst am Semesterende gutschreiben, damit ein Modul nicht ein
-            // anderes im selben Semester freischaltet.
+            
+            
+            
+            
             int lpDiesesSemester = 0;
             Set<String> neuBestanden = new HashSet<>();
 
@@ -211,9 +218,12 @@ public class StudierendenGenerator {
                 boolean geschafft;
                 Double note;
 
-                if (!m.benotet()) {
-                    // Unbenotete Leistung (Fachpraktikum): gilt als erbracht,
-                    // eine Note gibt es hier in keinem Fall.
+                if (laufendesSemester) {
+                    // Das aktuellste Semester ist noch nicht abgeschlossen:
+                    // kein Ergebnis, nur belegt.
+                    geschafft = false;
+                    note = null;
+                } else if (!m.benotet()) {
                     geschafft = true;
                     note = null;
                 } else if (random.nextDouble() < k.durchfallquote()) {
@@ -224,7 +234,9 @@ public class StudierendenGenerator {
                     note = NOTEN.get(random.nextInt(NOTEN.size()));
                 }
 
-                String status = geschafft ? "BESTANDEN" : "NICHT_BESTANDEN";
+                String status = laufendesSemester
+                        ? "BELEGT"
+                        : (geschafft ? "BESTANDEN" : "NICHT_BESTANDEN");
 
                 if (versuchNr == 1) {
                     String wahlangebot = null;
@@ -233,9 +245,10 @@ public class StudierendenGenerator {
                         if (AWE_FREITEXT.contains(m.code())) {
                             kursTitel = AWE_TITEL.get(random.nextInt(AWE_TITEL.size()));
                         } else if ("AWE".equals(m.bereich())) {
-                            wahlangebot = waehleSprache(
-                                    sprachen.get(m.niveaustufe()), sprachePraefix, random);
-                            sprachePraefix = wahlangebot.substring(0, wahlangebot.indexOf('_'));
+                            wahlangebot = waehleSprache(sprachen.get(m.niveaustufe()), sprachePraefix, random);
+                            if ("B16".equals(m.code())) {
+                                sprachePraefix = wahlangebot.substring(0, wahlangebot.indexOf('_'));
+                            }
                         } else {
                             wahlangebot = waehleOhneWiederholung(wpAngebote, schonGewaehlteWp, random);
                         }
@@ -245,16 +258,11 @@ public class StudierendenGenerator {
                             + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                             nutzendeId, m.code(), wahlangebot, kursTitel, s.id(), status, note, 1);
                 } else {
-                    // Wiederholung überschreibt die bestehende Zeile, die alte
-                    // Note wird nicht aufbewahrt (Team-Entscheidung).
                     jdbc.update("UPDATE leistung SET status = ?, note = ?, anzahl_versuche = ?, "
                             + "semester_id = ? WHERE nutzende_id = ? AND modul_code = ?",
                             status, note, versuchNr, s.id(), nutzendeId, m.code());
                 }
 
-                // Ein belegtes Modul kostet Arbeitszeit, auch wenn es nicht
-                // bestanden wird. Deshalb zählt es in jedem Fall auf das
-                // LP-Ziel dieses Semesters.
                 lpDiesesSemester += m.lp();
                 if (geschafft) {
                     neuBestanden.add(m.code());
@@ -264,6 +272,43 @@ public class StudierendenGenerator {
             for (String code : neuBestanden) {
                 bestanden.add(code);
                 lp += lpVon(module, code);
+            }
+
+            // E28: Module mit gleiches_semester (z.B. B65 -> B66, 177 LP)
+            // dürfen im selben Semester fertig werden. Dafür erst jetzt prüfen,
+            // mit dem gerade aktualisierten bestanden/lp-Stand.
+            if (!laufendesSemester) {
+                for (Modul m : module) {
+                    if (versuche.containsKey(m.code())
+                            || m.fachsemester() > studiensemester
+                            || !passtInsSemester(m, s)
+                            || !hatGleichesSemesterVoraussetzung(m, voraussetzungen)
+                            || !voraussetzungenErfuellt(m, bestanden, lp, voraussetzungen)) {
+                        continue;
+                    }
+                    int versuchNr = versuche.merge(m.code(), 1, Integer::sum);
+                    boolean geschafft;
+                    Double note;
+                    if (!m.benotet()) {
+                        geschafft = true;
+                        note = null;
+                    } else if (random.nextDouble() < k.durchfallquote()) {
+                        geschafft = false;
+                        note = 5.0;
+                    } else {
+                        geschafft = true;
+                        note = NOTEN.get(random.nextInt(NOTEN.size()));
+                    }
+                    String status = geschafft ? "BESTANDEN" : "NICHT_BESTANDEN";
+                    jdbc.update("INSERT INTO leistung (nutzende_id, modul_code, wahlangebot_code, "
+                            + "kurs_titel, semester_id, status, note, anzahl_versuche) "
+                            + "VALUES (?, ?, NULL, NULL, ?, ?, ?, ?)",
+                            nutzendeId, m.code(), s.id(), status, note, versuchNr);
+                    if (geschafft) {
+                        bestanden.add(m.code());
+                        lp += lpVon(module, m.code());
+                    }
+                }
             }
         }
     }
@@ -293,6 +338,12 @@ public class StudierendenGenerator {
         return true;
     }
 
+    private boolean hatGleichesSemesterVoraussetzung(Modul m,
+            Map<String, List<Voraussetzung>> alle) {
+        return alle.getOrDefault(m.code(), List.of()).stream()
+                .anyMatch(Voraussetzung::gleichesSemester);
+    }
+
     // ------------------------------------------------------------------
     // Datenbankzugriff
     // ------------------------------------------------------------------
@@ -320,9 +371,16 @@ public class StudierendenGenerator {
         return id;
     }
 
+    /**
+     * Liefert die Semester als Zeitachse, nicht nach ID sortiert: die IDs
+     * folgen der Reihenfolge des Anlegens, nicht der Zeit (Abschnitt 3 im
+     * Modelldokument). SS liegt vor WS desselben Jahres.
+     */
     private List<Semester> ladeSemester() {
-        return jdbc.query("SELECT semester_id, jahr, art FROM semester ORDER BY semester_id",
-                (rs, i) -> new Semester(rs.getInt("semester_id"), rs.getInt("jahr"), rs.getString("art")));
+        return jdbc.query("SELECT semester_id, jahr, art FROM semester "
+                + "ORDER BY jahr, CASE art WHEN 'SS' THEN 0 ELSE 1 END",
+                (rs, i) -> new Semester(rs.getInt("semester_id"), rs.getInt("jahr"),
+                        rs.getString("art")));
     }
 
     private List<Modul> ladeModule() {
@@ -343,13 +401,14 @@ public class StudierendenGenerator {
         record Zeile(String modulCode, Voraussetzung voraussetzung) {}
 
         List<Zeile> zeilen = jdbc.query(
-                "SELECT modul_code, vorausgesetzt_modul_code, min_lp FROM voraussetzung "
-                        + "WHERE art = 'NOTWENDIG'",
-                (rs, i) -> {
-                    Integer minLp = rs.getObject("min_lp") == null ? null : rs.getInt("min_lp");
-                    return new Zeile(rs.getString("modul_code"),
-                            new Voraussetzung(rs.getString("vorausgesetzt_modul_code"), minLp));
-                });
+        "SELECT modul_code, vorausgesetzt_modul_code, min_lp, gleiches_semester FROM voraussetzung "
+                + "WHERE art = 'NOTWENDIG'",
+        (rs, i) -> {
+            Integer minLp = rs.getObject("min_lp") == null ? null : rs.getInt("min_lp");
+            return new Zeile(rs.getString("modul_code"),
+                    new Voraussetzung(rs.getString("vorausgesetzt_modul_code"), minLp,
+                            rs.getBoolean("gleiches_semester")));
+        });
 
         Map<String, List<Voraussetzung>> ergebnis = new HashMap<>();
         for (Zeile z : zeilen) {

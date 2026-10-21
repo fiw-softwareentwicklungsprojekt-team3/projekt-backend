@@ -32,8 +32,7 @@ class StudierendenGeneratorTest {
 
     private static final StudierendenGenerator.Konfiguration KLEIN =
             new StudierendenGenerator.Konfiguration(
-                    42L, List.of(2021, 2022), 6, 10, 0.15, 4, 30);
-
+                    42L, List.of(2021, 2022), 6, 10, 0.10, 4, 30, 2026, "WS");
     @Autowired
     private StudierendenGenerator generator;
 
@@ -87,26 +86,37 @@ class StudierendenGeneratorTest {
     @Test
     void keinModulOhneBestandenesVorausgesetztesModul() {
         assertThat(zaehle("SELECT count(*) FROM leistung l "
+                + "JOIN semester sl ON sl.semester_id = l.semester_id "
                 + "JOIN voraussetzung v ON v.modul_code = l.modul_code "
                 + "     AND v.art = 'NOTWENDIG' AND v.vorausgesetzt_modul_code IS NOT NULL "
                 + "WHERE NOT EXISTS ( "
                 + "  SELECT 1 FROM leistung l2 "
+                + "  JOIN semester s2 ON s2.semester_id = l2.semester_id "
                 + "  WHERE l2.nutzende_id = l.nutzende_id "
                 + "    AND l2.modul_code = v.vorausgesetzt_modul_code "
                 + "    AND l2.status = 'BESTANDEN' "
-                + "    AND l2.semester_id < l.semester_id)")).isZero();
+                + "    AND ( (s2.jahr, CASE s2.art WHEN 'SS' THEN 0 ELSE 1 END) "
+                + "            < (sl.jahr, CASE sl.art WHEN 'SS' THEN 0 ELSE 1 END) "
+                + "       OR (v.gleiches_semester AND s2.semester_id = l.semester_id) ))"
+                )).isZero();
     }
 
     @Test
     void keinModulUnterhalbSeinerMindestLeistungspunkte() {
         assertThat(zaehle("SELECT count(*) FROM leistung l "
+                + "JOIN semester sl ON sl.semester_id = l.semester_id "
                 + "JOIN voraussetzung v ON v.modul_code = l.modul_code "
                 + "     AND v.art = 'NOTWENDIG' AND v.min_lp IS NOT NULL "
                 + "WHERE ( SELECT COALESCE(sum(m.lp), 0) FROM leistung l2 "
                 + "        JOIN modul m ON m.code = l2.modul_code "
+                + "        JOIN semester s2 ON s2.semester_id = l2.semester_id "
                 + "        WHERE l2.nutzende_id = l.nutzende_id "
                 + "          AND l2.status = 'BESTANDEN' "
-                + "          AND l2.semester_id < l.semester_id ) < v.min_lp")).isZero();
+                + "          AND l2.modul_code <> l.modul_code "
+                + "          AND ( (s2.jahr, CASE s2.art WHEN 'SS' THEN 0 ELSE 1 END) "
+                + "                  < (sl.jahr, CASE sl.art WHEN 'SS' THEN 0 ELSE 1 END) "
+                + "             OR (v.gleiches_semester AND s2.semester_id = l.semester_id) ) "
+                + "      ) < v.min_lp")).isZero();
     }
 
     @Test
@@ -142,6 +152,22 @@ class StudierendenGeneratorTest {
     }
 
     @Test
+    void dasLaufendeSemesterHatNochKeineErgebnisse() {
+        assertThat(zaehle("SELECT count(*) FROM leistung l JOIN semester s "
+                + "  ON s.semester_id = l.semester_id "
+                + "WHERE s.jahr = 2026 AND s.art = 'WS' AND l.status <> 'BELEGT'")).isZero();
+        assertThat(zaehle("SELECT count(*) FROM leistung WHERE status = 'BELEGT'")).isPositive();
+    }
+
+    @Test
+    void b65DarfImSelbenSemesterWieB66AbgeschlossenWerden() {
+        assertThat(zaehle("SELECT count(*) FROM leistung lb65 "
+                + "JOIN leistung lb66 ON lb66.nutzende_id = lb65.nutzende_id AND lb66.modul_code = 'B66' "
+                + "WHERE lb65.modul_code = 'B65' AND lb65.status = 'BESTANDEN' "
+                + "  AND lb66.status = 'BESTANDEN' AND lb66.semester_id = lb65.semester_id")).isPositive();
+    }
+
+    @Test
     void gleicherSeedErzeugtGleicheDaten() {
         String vorher = signatur();
         generator.generiere(KLEIN);
@@ -156,6 +182,8 @@ class StudierendenGeneratorTest {
         assertThat(k.maxProKohorte()).isEqualTo(60);
         assertThat(k.maxVersuche()).isEqualTo(4);
         assertThat(k.seed()).isEqualTo(42L);
+        assertThat(k.letztesJahr()).isEqualTo(2026);
+        assertThat(k.letzteArt()).isEqualTo("WS");
     }
 
     @Test
@@ -167,6 +195,8 @@ class StudierendenGeneratorTest {
                 + "  AND split_part(a.wahlangebot_code, '_', 1) "
                 + "   <> split_part(b.wahlangebot_code, '_', 1)")).isZero();
     }
+
+    
 
     private String signatur() {
         return jdbc.queryForObject(
