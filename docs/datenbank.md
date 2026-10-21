@@ -83,7 +83,7 @@ Semester mit Noten, Wiederholungen und Wahlangeboten.
 | `seed` | `42` | fester Startwert, gleicher Seed erzeugt gleiche Daten |
 | `kohortenJahre` | 2021–2025 | Startjahre der Kohorten (immer WS) |
 | `minProKohorte` / `maxProKohorte` | 30 / 60 | Kohortengröße |
-| `durchfallquote` | `0.15` | Anteil nicht bestandener Versuche bei benoteten Modulen |
+| `durchfallquote` | `0.10` | Anteil nicht bestandener Versuche bei benoteten Modulen |
 | `maxVersuche` | `4` | Versuche je Modul (RStPO) |
 | `lpZielProSemester` | `30` | LP, die pro Semester angestrebt werden |
 
