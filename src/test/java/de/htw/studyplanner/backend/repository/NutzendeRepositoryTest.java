@@ -62,15 +62,15 @@ class NutzendeRepositoryTest {
 
     @Test
     void semesterVergleichtChronologischNachJahrUndArt() {
-        Semester ws2025 = new Semester(2025, SemesterArt.WS);
         Semester ss2025 = new Semester(2025, SemesterArt.SS);
+        Semester ws2025 = new Semester(2025, SemesterArt.WS);
         Semester ws2026 = new Semester(2026, SemesterArt.WS);
 
-        List<Semester> semesters = List.of(ws2025, ss2025, ws2026);
+        List<Semester> semesters = List.of(ss2025, ws2025, ws2026);
 
         assertThat(semesters).isSortedAccordingTo(Comparator.naturalOrder());
-        assertThat(ws2025.compareTo(ss2025)).isNegative();
-        assertThat(ss2025.compareTo(ws2026)).isNegative();
+        assertThat(ss2025.compareTo(ws2025)).isNegative();
+        assertThat(ws2025.compareTo(ws2026)).isNegative();
     }
 
     @Test

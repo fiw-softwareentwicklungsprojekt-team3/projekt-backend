@@ -13,7 +13,7 @@ import jakarta.persistence.UniqueConstraint;
 /**
  * Entität für ein Studiensemester.
  *
- * Ein Semester wird durch das Jahr ({@code jahr})und die Art
+ * Ein Semester wird durch das Jahr ({@code jahr}) und die Art
  * ({@code WS} oder {@code SS}) identifiziert. Die Kombination aus beiden Werten
  * ist in der Datenbank eindeutig.
  *
@@ -24,7 +24,7 @@ import jakarta.persistence.UniqueConstraint;
  * Das Interface {@link Comparable} ist hier wichtig, um Listen einfach zu
  * sortieren, weil Semester im Backend
  * oft in Reihenfolge benötigt werden: Jahr aufsteigend, und bei gleichem Jahr
- * Wintersemester vor Sommersemester.
+ * Sommersemester vor Wintersemester.
  */
 @Entity
 @Table(name = "semester", uniqueConstraints = {
@@ -156,16 +156,16 @@ public class Semester implements Comparable<Semester> {
     /**
      * Ordnet den Typ des Semesters einer numerischen Reihenfolge zu.
      *
-     * Wintersemester hat hier die niedrigere Reihenfolge, da es im Studienverlauf
-     * vor dem Sommersemester liegt.
+     * Sommersemester hat hier die niedrigere Reihenfolge, da es im selben
+     * Kalenderjahr zeitlich vor dem Wintersemester liegt.
      */
     private int semesterOrder(SemesterArt art) {
         if (art == null) {
             return Integer.MAX_VALUE;
         }
         return switch (art) {
-            case WS -> 0;
-            case SS -> 1;
+            case SS -> 0;
+            case WS -> 1;
         };
     }
 
