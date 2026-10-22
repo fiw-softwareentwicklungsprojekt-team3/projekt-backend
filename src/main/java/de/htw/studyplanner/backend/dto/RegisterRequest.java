@@ -1,9 +1,17 @@
 package de.htw.studyplanner.backend.dto;
-
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+
+@Schema(example = """
+        {
+          "email": "studentin@example.com",
+          "password": "geheimesPasswort",
+          "startsemester": "WS 2025"
+        }
+        """)
 
 public record RegisterRequest(
         @NotBlank(message = "email darf nicht leer sein")
