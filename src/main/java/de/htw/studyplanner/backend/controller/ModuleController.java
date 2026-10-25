@@ -43,12 +43,14 @@ public class ModuleController {
     @Operation(summary = "Module auflisten",
             description = "Sortiert nach Fachsemester und Code. Filter sind optional und werden kombiniert.")
     public List<ModuleDto> list(
-            @Parameter(description = "Fachsemester, 1 bis 6", example = "3")
-            @RequestParam(required = false) Integer fachsemester,
-            @Parameter(description = "P (Pflicht) oder WP (Wahlpflicht)", example = "P")
-            @RequestParam(required = false) String art,
-            @Parameter(description = "WS oder SS; Module mit Turnus BEIDE sind bei beiden enthalten", example = "WS")
-            @RequestParam(required = false) String turnus) {
+            @Parameter(name = "semester", description = "Fachsemester, 1 bis 6", example = "3")
+            @RequestParam(name = "semester", required = false) Integer fachsemester,
+            @Parameter(name = "type", description = "P (Pflicht) oder WP (Wahlpflicht)", example = "P")
+            @RequestParam(name = "type", required = false) String art,
+            @Parameter(name = "term",
+                    description = "WS oder SS; Module mit Turnus BEIDE sind bei beiden enthalten",
+                    example = "WS")
+            @RequestParam(name = "term", required = false) String turnus) {
         return moduleService.list(fachsemester, art, turnus);
     }
 

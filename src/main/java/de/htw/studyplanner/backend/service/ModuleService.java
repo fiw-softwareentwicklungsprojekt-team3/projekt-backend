@@ -59,16 +59,16 @@ public class ModuleService {
     public List<ModuleDto> list(Integer fachsemester, String art, String turnus) {
         if (fachsemester != null
                 && (fachsemester < ERSTES_SEMESTER || fachsemester > LETZTES_SEMESTER)) {
-            throw badRequest("Ungültiger Wert für fachsemester: erlaubt sind 1 bis 6.");
+            throw badRequest("Ungültiger Wert für semester: erlaubt sind 1 bis 6.");
         }
-        ModulArt gesuchteArt = parseArt(art);
-        Turnus gesuchterTurnus = parseTurnus(turnus);
+        ModulArt gesuchterType = parseType(art);
+        Turnus gesuchterTerm = parseTerm(turnus);
 
         return modulRepository.findAll(SORTIERUNG).stream()
                 .filter(m -> fachsemester == null || m.getFachsemester() == fachsemester)
-                .filter(m -> gesuchteArt == null || m.getArt() == gesuchteArt)
-                .filter(m -> gesuchterTurnus == null
-                        || m.getTurnus() == gesuchterTurnus || m.getTurnus() == Turnus.BEIDE)
+                .filter(m -> gesuchterType == null || m.getArt() == gesuchterType)
+                .filter(m -> gesuchterTerm == null
+                        || m.getTurnus() == gesuchterTerm || m.getTurnus() == Turnus.BEIDE)
                 .map(ModuleDto::of)
                 .toList();
     }
@@ -106,29 +106,29 @@ public class ModuleService {
         return new PrerequisiteDto(v.getArt(), null, null, v.getMinLp(), v.getToleranzLp());
     }
 
-    private static ModulArt parseArt(String art) {
-        if (art == null) {
+    private static ModulArt parseType(String type) {
+        if (type == null) {
             return null;
         }
         try {
-            return ModulArt.valueOf(art.toUpperCase(Locale.ROOT));
+            return ModulArt.valueOf(type.toUpperCase(Locale.ROOT));
         } catch (IllegalArgumentException e) {
-            throw badRequest("Ungültiger Wert für art: erlaubt sind P und WP.");
+            throw badRequest("Ungültiger Wert für type: erlaubt sind P und WP.");
         }
     }
 
     /** BEIDE ist als Filterwert nicht erlaubt; es ist nur ein Wert der Module selbst. */
-    private static Turnus parseTurnus(String turnus) {
-        if (turnus == null) {
+    private static Turnus parseTerm(String term) {
+        if (term == null) {
             return null;
         }
-        if (turnus.equalsIgnoreCase("WS")) {
+        if (term.equalsIgnoreCase("WS")) {
             return Turnus.WS;
         }
-        if (turnus.equalsIgnoreCase("SS")) {
+        if (term.equalsIgnoreCase("SS")) {
             return Turnus.SS;
         }
-        throw badRequest("Ungültiger Wert für turnus: erlaubt sind WS und SS.");
+        throw badRequest("Ungültiger Wert für term: erlaubt sind WS und SS.");
     }
 
     private static ResponseStatusException badRequest(String message) {
