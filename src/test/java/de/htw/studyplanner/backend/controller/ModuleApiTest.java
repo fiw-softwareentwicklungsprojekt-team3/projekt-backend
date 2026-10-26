@@ -15,9 +15,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
 import de.htw.studyplanner.backend.TestcontainersConfiguration;
+import de.htw.studyplanner.backend.model.Nutzende;
+import de.htw.studyplanner.backend.model.Rolle;
+import de.htw.studyplanner.backend.security.JwtService;
 
 /**
  * Prüft den Modulkatalog gegen die echten Seed-Daten aus V2 (32 Module).
@@ -35,11 +39,26 @@ class ModuleApiTest {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @Autowired
+    private JwtService jwtService;
+
+    private MockHttpServletRequestBuilder authenticatedGet(String path) {
+        Nutzende testUser = new Nutzende(
+                "module-test@example.com",
+                "unused",
+                Rolle.STUDIERENDE);
+        testUser.setNutzendeId(1);
+
+        return get(path).header(
+                "Authorization",
+                "Bearer " + jwtService.generateToken(testUser));
+    }
+
     // ---------------------------------------------------------------- Liste
 
     @Test
     void listeEnthaeltAlleModuleSortiertNachSemesterUndCode() throws Exception {
-        mockMvc.perform(get("/api/modules"))
+        mockMvc.perform(authenticatedGet("/api/modules"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(32)))
                 .andExpect(jsonPath("$[0].code").value("B11"))
@@ -50,7 +69,7 @@ class ModuleApiTest {
 
     @Test
     void listeZeigtLpSwsTypUndTurnus() throws Exception {
-        mockMvc.perform(get("/api/modules").param("fachsemester", "3"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("fachsemester", "3"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[3].code").value("B34"))
                 .andExpect(jsonPath("$[3].name").value("Softwareentwicklungsprojekt"))
@@ -65,14 +84,14 @@ class ModuleApiTest {
 
     @Test
     void filterNachSemester() throws Exception {
-        mockMvc.perform(get("/api/modules").param("fachsemester", "3"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("fachsemester", "3"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].code", contains("B31", "B32", "B33", "B34", "B35")));
     }
 
     @Test
     void filterNachTypWahlpflicht() throws Exception {
-        mockMvc.perform(get("/api/modules").param("art", "WP"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("art", "WP"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].code", contains("B41", "B54")));
     }
@@ -80,17 +99,17 @@ class ModuleApiTest {
     @Test
     void filterNachTurnus() throws Exception {
         // Ungerades Fachsemester = WS (6 + 5 + 6 Module), gerades = SS (6 + 3 + 6 Module)
-        mockMvc.perform(get("/api/modules").param("turnus", "WS"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("turnus", "WS"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(17)));
-        mockMvc.perform(get("/api/modules").param("turnus", "SS"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("turnus", "SS"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(15)));
     }
 
     @Test
     void filterWerdenKombiniert() throws Exception {
-        mockMvc.perform(get("/api/modules").param("fachsemester", "3").param("turnus", "SS"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("fachsemester", "3").param("turnus", "SS"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }
@@ -102,31 +121,31 @@ class ModuleApiTest {
                 + "sws_vorlesung, sws_uebung, turnus) "
                 + "VALUES ('TST1', 'Testmodul', 1, 'P', 'FACH', 5, 2, 2, 'BEIDE')");
 
-        mockMvc.perform(get("/api/modules").param("turnus", "WS"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("turnus", "WS"))
                 .andExpect(jsonPath("$", hasSize(18)))
                 .andExpect(jsonPath("$[*].code", hasItem("TST1")));
-        mockMvc.perform(get("/api/modules").param("turnus", "SS"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("turnus", "SS"))
                 .andExpect(jsonPath("$", hasSize(16)))
                 .andExpect(jsonPath("$[*].code", hasItem("TST1")));
     }
 
     @Test
     void ungueltigeFilterwerteLiefern400() throws Exception {
-        mockMvc.perform(get("/api/modules").param("fachsemester", "0"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("fachsemester", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(status().reason(containsString("fachsemester")));
-        mockMvc.perform(get("/api/modules").param("fachsemester", "7"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("fachsemester", "7"))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/api/modules").param("fachsemester", "abc"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("fachsemester", "abc"))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/api/modules").param("art", "X"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("art", "X"))
                 .andExpect(status().isBadRequest())
                 .andExpect(status().reason(containsString("art")));
-        mockMvc.perform(get("/api/modules").param("turnus", "SOMMER"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("turnus", "SOMMER"))
                 .andExpect(status().isBadRequest())
                 .andExpect(status().reason(containsString("turnus")));
         // BEIDE ist nur ein Wert der Module, kein erlaubter Filterwert
-        mockMvc.perform(get("/api/modules").param("turnus", "BEIDE"))
+        mockMvc.perform(authenticatedGet("/api/modules").param("turnus", "BEIDE"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -134,7 +153,7 @@ class ModuleApiTest {
 
     @Test
     void b34BrauchtB11() throws Exception {
-        mockMvc.perform(get("/api/modules/B34"))
+        mockMvc.perform(authenticatedGet("/api/modules/B34"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("B34"))
                 .andExpect(jsonPath("$.name").value("Softwareentwicklungsprojekt"))
@@ -151,14 +170,14 @@ class ModuleApiTest {
 
     @Test
     void modulOhneVoraussetzungenHatLeereListe() throws Exception {
-        mockMvc.perform(get("/api/modules/B11"))
+        mockMvc.perform(authenticatedGet("/api/modules/B11"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.prerequisites", hasSize(0)));
     }
 
     @Test
     void fachpraktikumBrauchtSechzigLeistungspunkte() throws Exception {
-        mockMvc.perform(get("/api/modules/B43"))
+        mockMvc.perform(authenticatedGet("/api/modules/B43"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.graded").value(false))
                 .andExpect(jsonPath("$.countsForFinalGrade").value(false))
@@ -171,7 +190,7 @@ class ModuleApiTest {
     @Test
     void bachelorarbeitHatModulUndLpVoraussetzungen() throws Exception {
         // 17 Module aus den ersten drei Semestern und die Grenze von 151 LP (Toleranz 10)
-        mockMvc.perform(get("/api/modules/B66"))
+        mockMvc.perform(authenticatedGet("/api/modules/B66"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.prerequisites", hasSize(18)))
                 .andExpect(jsonPath("$.prerequisites[0].moduleCode").value("B11"))
@@ -181,7 +200,7 @@ class ModuleApiTest {
 
     @Test
     void unbekannterCodeLiefert404() throws Exception {
-        mockMvc.perform(get("/api/modules/X99"))
+        mockMvc.perform(authenticatedGet("/api/modules/X99"))
                 .andExpect(status().isNotFound())
                 .andExpect(status().reason(containsString("X99")));
     }

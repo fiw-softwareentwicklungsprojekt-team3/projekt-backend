@@ -3,6 +3,7 @@ package de.htw.studyplanner.backend.controller;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,5 +58,11 @@ class AuthLoginTest {
                 .andExpect(jsonPath("$.role").value("STUDIERENDE"))
                 .andExpect(jsonPath("$.exiresIn").doesNotExist())
                 .andExpect(jsonPath("$.email").doesNotExist());
+    }
+
+    @Test
+    void geschuetzterEndpunktOhneTokenLiefert401() throws Exception {
+        mockMvc.perform(get("/api/health"))
+                .andExpect(status().isUnauthorized());
     }
 }
