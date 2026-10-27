@@ -20,10 +20,20 @@ public class StudierendenGeneratorRunner implements CommandLineRunner {
 
     private final StudierendenGenerator generator;
 
+    /**
+     * Erstellt den Runner.
+     *
+     * @param generator der Generator, der beim Start ausgeführt wird
+     */
     public StudierendenGeneratorRunner(StudierendenGenerator generator) {
         this.generator = generator;
     }
 
+    /**
+     * Führt den Generator mit der Standard-Konfiguration aus und gibt das Ergebnis aus.
+     *
+     * @param args Startargumente der Anwendung, werden nicht genutzt
+     */
     @Override
     public void run(String... args) {
         System.out.println("--- Studierendengenerator startet ---");
