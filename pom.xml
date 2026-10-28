@@ -29,6 +29,8 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<postgresql.version>42.7.12</postgresql.version>
+		<spring-security.version>6.3.8</spring-security.version>
 		<testcontainers.version>1.21.4</testcontainers.version>
 	</properties>
 	<dependencies>
@@ -129,27 +131,68 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
-			<!-- Testabdeckung messen, Bericht unter target/site/jacoco -->
-			<plugin>
-				<groupId>org.jacoco</groupId>
-				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>0.8.12</version>
-				<executions>
-					<execution>
-						<goals>
-							<goal>prepare-agent</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>report</id>
-						<phase>verify</phase>
-						<goals>
-							<goal>report</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-		</plugins>
-	</build>
+			<!-- Testabdeckung messen und Mindestabdeckung prüfen -->
+<plugin>
+    <groupId>org.jacoco</groupId>
+    <artifactId>jacoco-maven-plugin</artifactId>
+    <version>0.8.12</version>
+
+    <configuration>
+        <excludes>
+            <!-- Keine Messung für Entities, DTOs und Konfiguration -->
+            <exclude>de/htw/studyplanner/backend/model/**</exclude>
+            <exclude>de/htw/studyplanner/backend/dto/**</exclude>
+            <exclude>de/htw/studyplanner/backend/config/**</exclude>
+
+            <!-- Generierter bzw. technischer Code -->
+            <exclude>**/generated/**</exclude>
+            <exclude>**/*Application.class</exclude>
+        </excludes>
+    </configuration>
+
+    <executions>
+        <!-- Coverage während der Tests messen -->
+        <execution>
+            <id>prepare-agent</id>
+            <goals>
+                <goal>prepare-agent</goal>
+            </goals>
+        </execution>
+
+        <!-- HTML-, XML- und CSV-Bericht erzeugen -->
+        <execution>
+            <id>report</id>
+            <phase>verify</phase>
+            <goals>
+                <goal>report</goal>
+            </goals>
+        </execution>
+
+        <!-- Build bei zu niedriger Coverage abbrechen -->
+        <execution>
+            <id>check-coverage</id>
+            <phase>verify</phase>
+            <goals>
+                <goal>check</goal>
+            </goals>
+            <configuration>
+                <rules>
+                    <rule>
+                        <element>BUNDLE</element>
+                        <limits>
+                            <limit>
+                                <counter>INSTRUCTION</counter>
+                                <value>COVEREDRATIO</value>
+                                <minimum>0.70</minimum>
+                            </limit>
+                        </limits>
+                    </rule>
+                </rules>
+           </configuration>
+        </execution>
+    </executions>
+</plugin>
+        </plugins>
+    </build>
 
 </project>
