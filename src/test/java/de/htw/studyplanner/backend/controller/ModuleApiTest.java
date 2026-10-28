@@ -29,20 +29,20 @@ import de.htw.studyplanner.backend.TestcontainersConfiguration;
 @Transactional
 class ModuleApiTest {
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired 
+    private MockMvc mockMvc; 
 
     @Autowired
-    private JdbcTemplate jdbc;
+    private JdbcTemplate jdbc; 
 
-    // ---------------------------------------------------------------- Liste
+    // ---------------------------------------------------------------- Liste ------------------------------
 
-    @Test
+    @Test 
     void listeEnthaeltAlleModuleSortiertNachSemesterUndCode() throws Exception {
         mockMvc.perform(get("/api/modules"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(32)))
-                .andExpect(jsonPath("$[0].code").value("B11"))
+                .andExpect(jsonPath("$[0].code").value("B11"))    
                 .andExpect(jsonPath("$[5].code").value("B16"))   // letztes Modul in Semester 1
                 .andExpect(jsonPath("$[6].code").value("B21"))   // erstes Modul in Semester 2
                 .andExpect(jsonPath("$[31].code").value("B66"));
@@ -50,7 +50,7 @@ class ModuleApiTest {
 
     @Test
     void listeZeigtLpSwsTypUndTurnus() throws Exception {
-        mockMvc.perform(get("/api/modules").param("fachsemester", "3"))
+        mockMvc.perform(get("/api/modules").param("semester", "3"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[3].code").value("B34"))
                 .andExpect(jsonPath("$[3].name").value("Softwareentwicklungsprojekt"))
@@ -65,14 +65,14 @@ class ModuleApiTest {
 
     @Test
     void filterNachSemester() throws Exception {
-        mockMvc.perform(get("/api/modules").param("fachsemester", "3"))
+        mockMvc.perform(get("/api/modules").param("semester", "3"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].code", contains("B31", "B32", "B33", "B34", "B35")));
     }
 
     @Test
-    void filterNachTypWahlpflicht() throws Exception {
-        mockMvc.perform(get("/api/modules").param("art", "WP"))
+    void filterNachTypWahlpflicht() throws Exception { 
+        mockMvc.perform(get("/api/modules").param("type", "WP"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].code", contains("B41", "B54")));
     }
@@ -80,17 +80,27 @@ class ModuleApiTest {
     @Test
     void filterNachTurnus() throws Exception {
         // Ungerades Fachsemester = WS (6 + 5 + 6 Module), gerades = SS (6 + 3 + 6 Module)
-        mockMvc.perform(get("/api/modules").param("turnus", "WS"))
+        mockMvc.perform(get("/api/modules").param("term", "WS"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(17)));
-        mockMvc.perform(get("/api/modules").param("turnus", "SS"))
+        mockMvc.perform(get("/api/modules").param("term", "SS"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(15)));
     }
 
     @Test
     void filterWerdenKombiniert() throws Exception {
-        mockMvc.perform(get("/api/modules").param("fachsemester", "3").param("turnus", "SS"))
+        mockMvc.perform(get("/api/modules").param("semester", "3").param("term", "SS"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void alleFilterWerdenKombiniert() throws Exception {
+        mockMvc.perform(get("/api/modules")
+                        .param("semester", "3")
+                        .param("type", "WP")
+                        .param("term", "WS"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }
@@ -102,31 +112,31 @@ class ModuleApiTest {
                 + "sws_vorlesung, sws_uebung, turnus) "
                 + "VALUES ('TST1', 'Testmodul', 1, 'P', 'FACH', 5, 2, 2, 'BEIDE')");
 
-        mockMvc.perform(get("/api/modules").param("turnus", "WS"))
+        mockMvc.perform(get("/api/modules").param("term", "WS"))
                 .andExpect(jsonPath("$", hasSize(18)))
                 .andExpect(jsonPath("$[*].code", hasItem("TST1")));
-        mockMvc.perform(get("/api/modules").param("turnus", "SS"))
+        mockMvc.perform(get("/api/modules").param("term", "SS"))
                 .andExpect(jsonPath("$", hasSize(16)))
                 .andExpect(jsonPath("$[*].code", hasItem("TST1")));
     }
 
     @Test
     void ungueltigeFilterwerteLiefern400() throws Exception {
-        mockMvc.perform(get("/api/modules").param("fachsemester", "0"))
+        mockMvc.perform(get("/api/modules").param("semester", "0"))
                 .andExpect(status().isBadRequest())
-                .andExpect(status().reason(containsString("fachsemester")));
-        mockMvc.perform(get("/api/modules").param("fachsemester", "7"))
+                .andExpect(status().reason(containsString("semester")));
+        mockMvc.perform(get("/api/modules").param("semester", "7"))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/api/modules").param("fachsemester", "abc"))
+        mockMvc.perform(get("/api/modules").param("semester", "abc"))
                 .andExpect(status().isBadRequest());
-        mockMvc.perform(get("/api/modules").param("art", "X"))
+        mockMvc.perform(get("/api/modules").param("type", "X"))
                 .andExpect(status().isBadRequest())
-                .andExpect(status().reason(containsString("art")));
-        mockMvc.perform(get("/api/modules").param("turnus", "SOMMER"))
+                .andExpect(status().reason(containsString("type")));
+        mockMvc.perform(get("/api/modules").param("term", "SOMMER"))
                 .andExpect(status().isBadRequest())
-                .andExpect(status().reason(containsString("turnus")));
+                .andExpect(status().reason(containsString("term")));
         // BEIDE ist nur ein Wert der Module, kein erlaubter Filterwert
-        mockMvc.perform(get("/api/modules").param("turnus", "BEIDE"))
+        mockMvc.perform(get("/api/modules").param("term", "BEIDE"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -148,6 +158,7 @@ class ModuleApiTest {
                 .andExpect(jsonPath("$.prerequisites[1].moduleCode").value("B21"))
                 .andExpect(jsonPath("$.prerequisites[2].moduleCode").value("B24"));
     }
+    
 
     @Test
     void modulOhneVoraussetzungenHatLeereListe() throws Exception {
@@ -157,7 +168,7 @@ class ModuleApiTest {
     }
 
     @Test
-    void fachpraktikumBrauchtSechzigLeistungspunkte() throws Exception {
+    void fachpraktikumBrauchtSechzigLeistungspunkte() throws Exception { 
         mockMvc.perform(get("/api/modules/B43"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.graded").value(false))
