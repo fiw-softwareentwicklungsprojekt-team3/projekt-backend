@@ -39,4 +39,23 @@ docker compose up -d
 
 Details, HTW-Server und Regeln für Migrationen: [docs/datenbank.md](docs/datenbank.md)
 
+## Testabdeckung
+
+Die Testabdeckung wird mit JaCoCo geprüft. Für das Projekt gilt eine
+Mindestabdeckung von 70 % Instruction-Coverage.
+
+Lokal kann der Bericht mit folgendem Befehl erzeugt werden:
+
+```bash
+./mvnw clean verify
+```
+
+Der HTML-Bericht befindet sich anschließend unter:
+
+```text
+target/site/jacoco/index.html
+```
+
+In GitHub Actions wird der JaCoCo-Bericht als Artifact des CI-Laufs hochgeladen.
+
 
