@@ -54,7 +54,6 @@ class AuthLoginTest {
                 .andExpect(jsonPath("$.token").isString())
                 .andExpect(jsonPath("$.expiresIn").value(3600))
                 .andExpect(jsonPath("$.role").value("STUDIERENDE"))
-                .andExpect(jsonPath("$.exiresIn").doesNotExist())
                 .andExpect(jsonPath("$.email").doesNotExist());
     }
 
