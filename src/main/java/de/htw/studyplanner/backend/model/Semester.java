@@ -170,7 +170,16 @@ public class Semester implements Comparable<Semester> {
     }
 
     /**
-     * Gibt ein lesbares String-Objekt für Debugging und Logging zurück.
+     * Liefert die lesbare Darstellung für die API im Format {@code "WS 2026"} bzw. {@code "SS 2027"}.
+     *
+     * @return das Semester-Label aus Art und vierstelligem Jahr
+     */
+    public String label() {
+        return art + " " + getJahr();
+    }
+
+    /**
+     * toString() bleibt unverändert für Debugging und Logs.
      */
     @Override
     public String toString() {
