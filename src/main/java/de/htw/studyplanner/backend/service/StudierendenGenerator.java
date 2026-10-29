@@ -60,6 +60,11 @@ public class StudierendenGenerator {
 
     private final JdbcTemplate jdbc;
 
+    /**
+     * Erstellt den Generator.
+     *
+     * @param jdbc Zugriff auf die Datenbank per SQL
+     */
     public StudierendenGenerator(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
@@ -69,6 +74,8 @@ public class StudierendenGenerator {
     // ------------------------------------------------------------------
 
     /**
+     * Einstellungen für einen Lauf des Generators.
+     *
      * @param seed            fester Startwert, gleiche Eingabe erzeugt gleiche Daten
      * @param kohortenJahre   Startjahre der Kohorten, jeweils Wintersemester
      * @param minProKohorte   kleinste Kohortengröße
@@ -76,6 +83,9 @@ public class StudierendenGenerator {
      * @param durchfallquote  Anteil nicht bestandener Versuche bei benoteten Modulen
      * @param maxVersuche     Versuche je Modul, danach endgültig nicht bestanden
      * @param lpZielProSemester LP, die pro Semester angestrebt werden
+     * @param letztesJahr     Jahr des letzten simulierten Semesters
+     * @param letzteArt       Art des letzten simulierten Semesters, "WS" oder "SS";
+     *                        dieses Semester gilt als laufend, Module sind dort nur belegt
      */
     public record Konfiguration(
             long seed,
@@ -88,6 +98,12 @@ public class StudierendenGenerator {
             int letztesJahr,
             String letzteArt) {
 
+        /**
+         * Standardwerte: Seed 42, Kohorten 2021 bis 2025 mit je 30 bis 60 Personen,
+         * Durchfallquote 0,10, höchstens 4 Versuche, 30 LP pro Semester, bis WS 2026.
+         *
+         * @return die Standard-Konfiguration
+         */
         public static Konfiguration standard() {
             return new Konfiguration(
                     42L,
@@ -100,6 +116,14 @@ public class StudierendenGenerator {
         }
     }
 
+    /**
+     * Zusammenfassung nach einem Lauf.
+     *
+     * @param studierende    Anzahl erzeugter Studierender
+     * @param leistungen     Anzahl aller Zeilen in {@code leistung}
+     * @param bestanden      davon mit Status BESTANDEN
+     * @param nichtBestanden davon mit Status NICHT_BESTANDEN
+     */
     public record Ergebnis(int studierende, int leistungen, int bestanden, int nichtBestanden) {}
 
     // ------------------------------------------------------------------
@@ -119,11 +143,23 @@ public class StudierendenGenerator {
     // Einstieg
     // ------------------------------------------------------------------
 
+    /**
+     * Erzeugt die Daten mit {@link Konfiguration#standard()}.
+     *
+     * @return Anzahl der erzeugten Studierenden und Leistungen
+     */
     @Transactional
     public Ergebnis generiere() {
         return generiere(Konfiguration.standard());
     }
 
+    /**
+     * Löscht früher erzeugte synthetische Daten und erzeugt sie neu.
+     *
+     * @param k Einstellungen für diesen Lauf
+     * @return Anzahl der erzeugten Studierenden und Leistungen
+     * @throws IllegalStateException wenn ein benötigtes Semester in der Tabelle {@code semester} fehlt
+     */
     @Transactional
     public Ergebnis generiere(Konfiguration k) {
         loescheFrueherErzeugteDaten();
