@@ -21,6 +21,10 @@ import de.htw.studyplanner.backend.model.Wahlangebot;
  * Prüft, dass die neuen Lese-Entitäten die Seed-Daten aus V2 und V3 richtig laden:
  * {@link Wahlangebot}, {@link ModulTeil} und das Feld {@code gleichesSemester} in
  * {@link Voraussetzung}.
+ *
+ * <p>Die Tests prüfen bewusst feste Werte aus dem Seed (z. B. WP1 = "Machine Learning"
+ * mit Empfehlung B31). Schlägt dieser Test fehl, wurde vermutlich das Seed in V2 oder
+ * V3 geändert. Dann die erwarteten Werte hier an die neue Migration anpassen.
  */
 @DataJpaTest
 @Import(TestcontainersConfiguration.class)
