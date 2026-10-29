@@ -33,14 +33,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class AuthController {
 
     private final RegistrationService registrationService;
-    /**
-     * Antwortet mit 401, wenn E-Mail oder Passwort beim Login falsch sind.
-     * Die Meldung verrät nicht, welches von beiden falsch ist.
-     *
-     * @param exception der Fehler aus dem LoginService
-     * @return Status 401 mit der Meldung im Feld {@code message}
-     */
-    @ExceptionHandler(InvalidCredentialsException.class)
+    private final LoginService loginService;
 
     /**
      * Erstellt den Controller.
