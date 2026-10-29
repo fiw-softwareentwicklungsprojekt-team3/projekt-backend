@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import de.htw.studyplanner.backend.service.EmailAlreadyExistsException;
+import de.htw.studyplanner.backend.service.InvalidSemesterFormatException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
@@ -20,6 +21,17 @@ public class ApiExceptionHandler {
                 .body(Map.of(
                         "field", "email",
                         "message", "E-Mail ist bereits vergeben"
+                ));
+    }
+
+    @ExceptionHandler(InvalidSemesterFormatException.class)
+    public ResponseEntity<Map<String, String>> invalidSemesterFormat(
+            InvalidSemesterFormatException exception) {
+        return ResponseEntity
+                .badRequest()
+                .body(Map.of(
+                        "field", "semester",
+                        "message", exception.getMessage()
                 ));
     }
 
