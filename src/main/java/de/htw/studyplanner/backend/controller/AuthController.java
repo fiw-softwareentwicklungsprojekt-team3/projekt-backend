@@ -38,19 +38,13 @@ public class AuthController {
     private final RegistrationService registrationService;
     private final LoginService loginService;
 
-    public AuthController(
-            RegistrationService registrationService,
-            LoginService loginService) {
-
-feature/E2.3-login-jwt
-
     /**
      * Erstellt den Controller.
      *
      * @param registrationService Service, der neue Studierende anlegt
+     * @param loginService        Service, der den Login prüft und das Token erzeugt
      */
-    public AuthController(RegistrationService registrationService) {
-main
+    public AuthController(RegistrationService registrationService, LoginService loginService) {
         this.registrationService = registrationService;
         this.loginService = loginService;
     }
