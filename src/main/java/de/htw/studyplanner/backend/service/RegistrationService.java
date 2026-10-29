@@ -15,6 +15,10 @@ import de.htw.studyplanner.backend.repository.NutzendeRepository;
 import de.htw.studyplanner.backend.repository.SemesterRepository;
 import de.htw.studyplanner.backend.repository.StudierendeRepository;
 
+/**
+ * Legt neue Studierende an: Konto in {@code nutzende}, Eintrag in {@code studierende}
+ * und, falls nötig, das Startsemester in {@code semester}.
+ */
 @Service
 public class RegistrationService {
 
@@ -23,6 +27,14 @@ public class RegistrationService {
     private final SemesterRepository semesterRepository;
     private final PasswordEncoder passwordEncoder;
 
+    /**
+     * Erstellt den Service.
+     *
+     * @param nutzendeRepository    Zugriff auf die Konten
+     * @param studierendeRepository Zugriff auf die Studierenden-Einträge
+     * @param semesterRepository    Zugriff auf die Semester
+     * @param passwordEncoder       erzeugt den Passwort-Hash (BCrypt)
+     */
     public RegistrationService(
             NutzendeRepository nutzendeRepository,
             StudierendeRepository studierendeRepository,
@@ -34,6 +46,17 @@ public class RegistrationService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    /**
+     * Registriert eine neue Person mit der Rolle STUDIERENDE.
+     *
+     * <p>Gespeichert wird nur der BCrypt-Hash des Passworts. Gibt es das Startsemester
+     * noch nicht in der Tabelle {@code semester}, wird es angelegt. Alles passiert in
+     * einer Transaktion: schlägt ein Schritt fehl, wird nichts gespeichert.
+     *
+     * @param request bereits validierte Eingaben; startsemester hat das Format "WS JJJJ"
+     * @return die angelegte Person ohne Passwort
+     * @throws EmailAlreadyExistsException wenn es die E-Mail schon gibt (führt zu Status 409)
+     */
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
         if (nutzendeRepository.findByEmail(request.email()).isPresent()) {

@@ -39,6 +39,12 @@ public class ModuleService {
     private final ModulRepository modulRepository;
     private final VoraussetzungRepository voraussetzungRepository;
 
+    /**
+     * Erstellt den Service.
+     *
+     * @param modulRepository         Zugriff auf die Module
+     * @param voraussetzungRepository Zugriff auf die Voraussetzungen
+     */
     public ModuleService(ModulRepository modulRepository,
             VoraussetzungRepository voraussetzungRepository) {
         this.modulRepository = modulRepository;
