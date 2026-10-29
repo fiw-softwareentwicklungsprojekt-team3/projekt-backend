@@ -6,6 +6,11 @@ package de.htw.studyplanner.backend.service;
  */
 public class InvalidSemesterFormatException extends RuntimeException {
 
+    /**
+     * Erstellt den Fehler mit einer Meldung für die API.
+     *
+     * @param message Beschreibung, was am Format falsch ist
+     */
     public InvalidSemesterFormatException(String message) {
         super(message);
     }
