@@ -40,6 +40,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/api/auth/**")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/health")
+                        .permitAll()
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",

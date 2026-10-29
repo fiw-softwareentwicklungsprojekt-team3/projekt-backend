@@ -23,7 +23,7 @@ public class JwtService {
 
     public JwtService(
             @Value("${jwt.secret}") String secret,
-            @Value("${jwt.expiration-seconds}") long expirationSeconds) {
+            @Value("${jwt.expiration-seconds:3600}") long expirationSeconds) {
 
         if (secret.length() < 32) {
             throw new IllegalArgumentException(

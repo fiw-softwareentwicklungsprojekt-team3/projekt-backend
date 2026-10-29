@@ -12,8 +12,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
-import de.htw.studyplanner.backend.service.StudierendenGenerator;
+import de.htw.studyplanner.backend.service.StudierendenGenerator;import org.springframework.test.context.ActiveProfiles;
 
+   @ActiveProfiles("test")
 /**
  * Prüft die Konsistenz der synthetischen Daten.
  *
