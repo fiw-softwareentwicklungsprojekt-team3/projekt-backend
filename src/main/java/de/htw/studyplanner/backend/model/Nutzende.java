@@ -26,7 +26,7 @@ import jakarta.persistence.UniqueConstraint;
  * Die Rolle ist hier als Enum abgebildet, damit die Typen Studierende und Professorinnen einheitlich verwaltet
  * werden können, ohne für jeden Typ eine separate Haupttabelle anzulegen.
  *
- * Mit {@link JpaRepository} kann Spring diese Entität direkt speichern, laden,
+ * Mit {@link org.springframework.data.jpa.repository.JpaRepository} kann Spring diese Entität direkt speichern, laden,
  * aktualisieren und löschen. Die E-Mail ist zusätzlich als unique Constraint
  * abgesichert, damit keine zwei Nutzenden dieselbe E-Mailadresse im System haben.
  */
