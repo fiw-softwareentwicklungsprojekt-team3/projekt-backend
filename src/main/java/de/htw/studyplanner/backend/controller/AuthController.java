@@ -1,8 +1,5 @@
 package de.htw.studyplanner.backend.controller;
 
- feature/E2.3-login-jwt
-import de.htw.studyplanner.backend.dto.LoginRequest;
-import de.htw.studyplanner.backend.dto.LoginResponse;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
