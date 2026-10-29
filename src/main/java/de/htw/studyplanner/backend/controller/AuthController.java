@@ -3,7 +3,6 @@ package de.htw.studyplanner.backend.controller;
  feature/E2.3-login-jwt
 import de.htw.studyplanner.backend.dto.LoginRequest;
 import de.htw.studyplanner.backend.dto.LoginResponse;
-
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
@@ -14,23 +13,18 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import de.htw.studyplanner.backend.dto.FieldErrorResponse;
- main
+import de.htw.studyplanner.backend.dto.LoginRequest;
+import de.htw.studyplanner.backend.dto.LoginResponse;
 import de.htw.studyplanner.backend.dto.RegisterRequest;
 import de.htw.studyplanner.backend.dto.RegisterResponse;
 import de.htw.studyplanner.backend.service.LoginService;
 import de.htw.studyplanner.backend.service.RegistrationService;
- feature/E2.3-login-jwt
-import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
-
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-main
 
 /**
  * Registrierung neuer Studierender.
