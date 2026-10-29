@@ -52,7 +52,6 @@ public class ApiExceptionHandler {
      * @param exception der Validierungsfehler von Spring
      * @return Status 400 mit dem Namen des Feldes und der Fehlermeldung
      */
-main
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<FieldErrorResponse> validationError(
             MethodArgumentNotValidException exception) {
