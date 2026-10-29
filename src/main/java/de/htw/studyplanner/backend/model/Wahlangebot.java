@@ -35,7 +35,10 @@ public class Wahlangebot {
     @Column(name = "gruppe", nullable = false, length = 10)
     private AngebotsGruppe gruppe;
 
-    /** Niveaustufe {@code 1a} oder {@code 1b}; bei Sprachen trennt sie B16 ({@code 1a}) und B26 ({@code 1b}). */
+    /**
+     * Niveaustufe, erlaubt sind {@code "1a"} und {@code "1b"}, sonst {@code null}
+     * (CHECK in V1). Bei Sprachen trennt sie B16 ({@code 1a}) und B26 ({@code 1b}).
+     */
     @Column(name = "niveaustufe", length = 2)
     private String niveaustufe;
 
