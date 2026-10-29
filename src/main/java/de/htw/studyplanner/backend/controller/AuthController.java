@@ -92,7 +92,17 @@ public class AuthController {
         return registrationService.register(request);
     }
 
+    /**
+     * Meldet eine Person an und liefert ein JWT.
+     * Antwortet mit 401, wenn E-Mail oder Passwort falsch sind.
+     *
+     * @param request E-Mail und Passwort
+     * @return Token, Gültigkeit in Sekunden und Rolle
+     */
     @PostMapping("/login")
+    @Operation(summary = "Anmelden", description = "Prüft E-Mail und Passwort und liefert ein JWT.")
+    @ApiResponse(responseCode = "200", description = "Login erfolgreich")
+    @ApiResponse(responseCode = "401", description = "E-Mail oder Passwort falsch")
     public LoginResponse login(
             @Valid @RequestBody LoginRequest request) {
 
