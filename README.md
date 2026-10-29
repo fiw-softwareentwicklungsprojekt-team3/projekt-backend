@@ -14,8 +14,29 @@ Dieses Projekt nutzt Java 21 und Spring Boot 3.3.4.
 `./mvnw spring-boot:run`
 
 ## API Dokumentation
-Sobald der Server läuft, ist die Swagger-UI erreichbar unter:
-[http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+Sobald der Server läuft:
+
+| Was | Link |
+|---|---|
+| Swagger-UI (Endpunkte ansehen und ausprobieren) | [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html) |
+| OpenAPI-Spezifikation als JSON (für das Frontend) | [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs) |
+
+Das Frontend baut gegen die OpenAPI-Spezifikation. Daraus lassen sich z. B. TypeScript-Typen erzeugen.
+
+Jeder Endpunkt ist in Swagger mit Beschreibung, Beispielwerten und den möglichen Statuscodes dokumentiert.
+Die Annotationen stehen direkt an den Controller-Methoden (`@Operation`, `@ApiResponse`), die Beispielwerte an den DTOs (`@Schema`).
+401 und 403 kommen noch nicht vor, weil es noch keinen Login gibt.
+
+### JavaDoc
+Öffentliche Controller- und Service-Klassen und ihre öffentlichen Methoden haben JavaDoc. Erzeugen mit:
+
+```bash
+./mvnw javadoc:javadoc
+```
+
+Ergebnis: `target/reports/apidocs/index.html` (bei älteren Plugin-Versionen `target/site/apidocs/index.html`).
+
+Bei neuen Endpunkten gilt laut Definition of Done: JavaDoc und Swagger mit aktualisieren.
 
 ## Paketstruktur
 | Schicht | Package |
