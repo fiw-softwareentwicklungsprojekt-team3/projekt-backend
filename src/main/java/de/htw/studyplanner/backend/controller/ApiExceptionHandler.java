@@ -33,7 +33,6 @@ public class ApiExceptionHandler {
                 .body(new FieldErrorResponse("email", "E-Mail ist bereits vergeben"));
     }
 
- feature/E2.3-login-jwt
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<Map<String, String>> invalidCredentials(
             InvalidCredentialsException exception) {
