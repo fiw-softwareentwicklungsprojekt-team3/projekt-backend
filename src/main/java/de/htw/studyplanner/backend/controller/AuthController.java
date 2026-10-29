@@ -29,7 +29,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  */
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "Auth", description = "Registrierung (Login folgt mit JWT)")
+@Tag(name = "Auth", description = "Registrierung und Login")
 public class AuthController {
 
     private final RegistrationService registrationService;
