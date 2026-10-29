@@ -75,8 +75,8 @@
              <groupId>org.flywaydb</groupId>
               <artifactId>flyway-core</artifactId>
         </dependency>
-		<!-- BCrypt für Passwort-Hashes -->
-		<dependency>
+        <!-- JWT: Token erzeugen und prüfen -->
+        <dependency>
     <groupId>io.jsonwebtoken</groupId>
     <artifactId>jjwt-api</artifactId>
     <version>0.13.0</version>
