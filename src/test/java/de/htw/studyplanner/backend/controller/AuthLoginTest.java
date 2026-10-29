@@ -36,9 +36,7 @@ class AuthLoginTest {
     private PasswordEncoder passwordEncoder;
 
     @Test
-    void erfolgreicherLoginLiefertDieExakteResponseStruktur()
-            throws Exception {
-
+    void erfolgreicherLoginLiefertDieExakteResponseStruktur() throws Exception {
         nutzendeRepository.save(new Nutzende(
                 "login@example.com",
                 passwordEncoder.encode("geheimesPasswort"),
@@ -60,9 +58,8 @@ class AuthLoginTest {
                 .andExpect(jsonPath("$.email").doesNotExist());
     }
 
-   @Test
+    @Test
     void geschuetzterEndpunktOhneTokenLiefert401() throws Exception {
-        // HIER: /api/health durch /api/modules ersetzen!
         mockMvc.perform(get("/api/modules"))
                .andExpect(status().isUnauthorized());
     }
@@ -72,5 +69,29 @@ class AuthLoginTest {
         mockMvc.perform(get("/api/modules")
                 .header("Authorization", "Bearer ungueltiger.token.string"))
                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void loginMitFalschemPasswortGibt401() throws Exception {
+        nutzendeRepository.save(new Nutzende(
+                "falsch@example.com",
+                passwordEncoder.encode("richtigesPasswort"),
+                Rolle.STUDIERENDE));
+
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "falsch@example.com",
+                                  "password": "falschesPasswort"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void healthOhneTokenLiefert200() throws Exception {
+        mockMvc.perform(get("/api/health"))
+                .andExpect(status().isOk());
     }
 }
