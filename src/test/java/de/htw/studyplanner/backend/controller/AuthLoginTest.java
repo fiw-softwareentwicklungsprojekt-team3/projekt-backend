@@ -60,9 +60,17 @@ class AuthLoginTest {
                 .andExpect(jsonPath("$.email").doesNotExist());
     }
 
-    @Test
+   @Test
     void geschuetzterEndpunktOhneTokenLiefert401() throws Exception {
-        mockMvc.perform(get("/api/health"))
-                .andExpect(status().isUnauthorized());
+        // HIER: /api/health durch /api/modules ersetzen!
+        mockMvc.perform(get("/api/modules"))
+               .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void ungueltigerTokenGibt401() throws Exception {
+        mockMvc.perform(get("/api/modules")
+                .header("Authorization", "Bearer ungueltiger.token.string"))
+               .andExpect(status().isUnauthorized());
     }
 }

@@ -7,7 +7,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.http.MediaType;
 
 import de.htw.studyplanner.backend.security.JwtService;
 import de.htw.studyplanner.backend.security.JwtAuthenticationFilter;
@@ -15,7 +14,6 @@ import de.htw.studyplanner.backend.security.JwtAuthenticationFilter;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 @WebMvcTest(
         controllers = HealthController.class,
@@ -24,7 +22,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
                 classes = {
                         JwtAuthenticationFilter.class,
                         JwtService.class
-                }))
+                }
+        )
+)
 @AutoConfigureMockMvc(addFilters = false)
 class HealthControllerTest {
 
@@ -37,18 +37,4 @@ class HealthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
     }
-    @Test
-void loginMitFalschemPasswortGibt401() throws Exception {
-    mockMvc.perform(post("/api/auth/login")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"email\":\"test@example.com\",\"password\":\"falsch\"}"))
-           .andExpect(status().isUnauthorized());
-}
-
-@Test
-void ungueltigerTokenGibt401() throws Exception {
-    mockMvc.perform(get("/api/modules")
-            .header("Authorization", "Bearer ungueltig"))
-           .andExpect(status().isUnauthorized());
-}
 }
