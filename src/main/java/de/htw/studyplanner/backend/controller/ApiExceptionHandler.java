@@ -34,6 +34,12 @@ public class ApiExceptionHandler {
                 .body(new FieldErrorResponse("email", "E-Mail ist bereits vergeben"));
     }
 
+    /**
+     * Antwortet mit 400, wenn ein Semester-String nicht dem Format "WS JJJJ" oder "SS JJJJ" entspricht.
+     *
+     * @param exception der Fehler aus dem SemesterService
+     * @return Status 400 mit Feld {@code semester} und Fehlermeldung
+     */
     @ExceptionHandler(InvalidSemesterFormatException.class)
     public ResponseEntity<Map<String, String>> invalidSemesterFormat(
             InvalidSemesterFormatException exception) {
