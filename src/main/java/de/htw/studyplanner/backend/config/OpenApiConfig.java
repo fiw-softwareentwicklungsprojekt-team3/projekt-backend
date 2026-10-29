@@ -23,26 +23,22 @@ public class OpenApiConfig {
                         .addSecuritySchemes(
                                 BEARER_AUTH,
                                 new SecurityScheme()
-                                        .type(SecurityScheme.Type.HTTP)
-                                        .scheme("bearer")
-                                        .bearerFormat("JWT")))
-                .addSecurityItem(new SecurityRequirement()
-                        .addList(BEARER_AUTH));
-    }
 
 import org.springframework.context.annotation.Configuration;
 
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Info;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 
 /**
  * Allgemeine Angaben für die OpenAPI-Spezifikation (Titel, Version, Beschreibung).
- *
- * <p>Die Spezifikation selbst erzeugt springdoc aus den Controllern. Sie ist unter
- * {@code /v3/api-docs} als JSON abrufbar, die Swagger-UI unter {@code /swagger-ui.html}.
- * Die Beschreibungen der einzelnen Endpunkte stehen direkt an den Controller-Methoden.
+ * Die Spezifikation erzeugt springdoc aus den Controllern: {@code /v3/api-docs},
+ * Swagger-UI unter {@code /swagger-ui.html}.
  */
 @Configuration
+@SecurityScheme(name = "bearerAuth", type = SecuritySchemeType.HTTP,
+        scheme = "bearer", bearerFormat = "JWT")
 @OpenAPIDefinition(info = @Info(
         title = "Studyplanner API",
         version = "0.0.1",
@@ -51,14 +47,9 @@ import io.swagger.v3.oas.annotations.info.Info;
 
                 Alle Endpunkte beginnen mit `/api` und tauschen JSON aus.
 
-                **Fehlerformate**
-                - Validierungsfehler (400) und Konflikte (409) bei der Registrierung: `{ "field", "message" }`
-                - Alle anderen Fehler: Standardformat mit `timestamp`, `status`, `error`, `message`, `path`
-
-                **Authentifizierung:** Es gibt noch keinen Login. Alle Endpunkte sind ohne Token erreichbar,
-                deshalb kommen 401 und 403 aktuell nicht vor. Sobald JWT eingebaut ist, werden diese
-                Statuscodes bei den geschützten Endpunkten ergänzt.
+                **Authentifizierung:** Login über `POST /api/auth/login`. Das Token wird als
+                `Authorization: Bearer <token>` mitgeschickt. Offen sind nur Registrierung, Login,
+                `GET /api/health` und Swagger.
                 """))
 public class OpenApiConfig {
-main
 }

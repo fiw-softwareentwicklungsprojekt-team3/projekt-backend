@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import de.htw.studyplanner.backend.dto.FieldErrorResponse;
 import de.htw.studyplanner.backend.service.EmailAlreadyExistsException;
 import de.htw.studyplanner.backend.service.InvalidCredentialsException;
+import java.util.Map;
 
 /**
  * Wandelt Fehler aus den Controllern in eine {@link FieldErrorResponse} um,
@@ -32,7 +33,6 @@ public class ApiExceptionHandler {
                 .body(new FieldErrorResponse("email", "E-Mail ist bereits vergeben"));
     }
 
- feature/E2.3-login-jwt
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<Map<String, String>> invalidCredentials(
             InvalidCredentialsException exception) {
@@ -52,7 +52,6 @@ public class ApiExceptionHandler {
      * @param exception der Validierungsfehler von Spring
      * @return Status 400 mit dem Namen des Feldes und der Fehlermeldung
      */
-main
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<FieldErrorResponse> validationError(
             MethodArgumentNotValidException exception) {
