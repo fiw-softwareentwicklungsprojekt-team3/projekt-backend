@@ -23,6 +23,11 @@ public class SemesterService {
 
     private final SemesterRepository semesterRepository;
 
+    /**
+     * Erstellt den Service.
+     *
+     * @param semesterRepository Repository zum Suchen und Anlegen von Semestern
+     */
     public SemesterService(SemesterRepository semesterRepository) {
         this.semesterRepository = semesterRepository;
     }
