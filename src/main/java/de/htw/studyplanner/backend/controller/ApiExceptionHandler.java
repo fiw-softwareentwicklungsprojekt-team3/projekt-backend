@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import de.htw.studyplanner.backend.dto.FieldErrorResponse;
 import de.htw.studyplanner.backend.service.EmailAlreadyExistsException;
 import de.htw.studyplanner.backend.service.InvalidCredentialsException;
+import java.util.Map;
 
 /**
  * Wandelt Fehler aus den Controllern in eine {@link FieldErrorResponse} um,
