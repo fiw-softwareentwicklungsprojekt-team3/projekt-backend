@@ -58,6 +58,13 @@ public class Voraussetzung {
     @Column(name = "toleranz_lp", nullable = false)
     private int toleranzLp;
 
+    /**
+     * {@code true}, wenn die Voraussetzung auch im selben Semester erfüllt werden darf
+     * (E28, betrifft nur die NOTWENDIG-Zeilen von B65). Sonst gilt: früheres Semester.
+     */
+    @Column(name = "gleiches_semester", nullable = false)
+    private boolean gleichesSemester;
+
     /** Wird von JPA benötigt. */
     protected Voraussetzung() {
     }
@@ -84,5 +91,9 @@ public class Voraussetzung {
 
     public int getToleranzLp() {
         return toleranzLp;
+    }
+
+    public boolean isGleichesSemester() {
+        return gleichesSemester;
     }
 }
