@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import de.htw.studyplanner.backend.dto.FieldErrorResponse;
 import de.htw.studyplanner.backend.service.EmailAlreadyExistsException;
+import de.htw.studyplanner.backend.service.InvalidCredentialsException;
+import java.util.Map;
 
 /**
  * Wandelt Fehler aus den Controllern in eine {@link FieldErrorResponse} um,
@@ -30,6 +32,18 @@ public class ApiExceptionHandler {
                 .status(HttpStatus.CONFLICT)
                 .body(new FieldErrorResponse("email", "E-Mail ist bereits vergeben"));
     }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<Map<String, String>> invalidCredentials(
+            InvalidCredentialsException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of(
+                        "message", exception.getMessage()
+                ));
+    }
+
 
     /**
      * Antwortet mit 400, wenn ein Request-Body die Validierung nicht besteht.

@@ -10,8 +10,11 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import de.htw.studyplanner.backend.dto.FieldErrorResponse;
+import de.htw.studyplanner.backend.dto.LoginRequest;
+import de.htw.studyplanner.backend.dto.LoginResponse;
 import de.htw.studyplanner.backend.dto.RegisterRequest;
 import de.htw.studyplanner.backend.dto.RegisterResponse;
+import de.htw.studyplanner.backend.service.LoginService;
 import de.htw.studyplanner.backend.service.RegistrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -26,18 +29,21 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  */
 @RestController
 @RequestMapping("/api/auth")
-@Tag(name = "Auth", description = "Registrierung (Login folgt mit JWT)")
+@Tag(name = "Auth", description = "Registrierung und Login")
 public class AuthController {
 
     private final RegistrationService registrationService;
+    private final LoginService loginService;
 
     /**
      * Erstellt den Controller.
      *
      * @param registrationService Service, der neue Studierende anlegt
+     * @param loginService        Service, der den Login prüft und das Token erzeugt
      */
-    public AuthController(RegistrationService registrationService) {
+    public AuthController(RegistrationService registrationService, LoginService loginService) {
         this.registrationService = registrationService;
+        this.loginService = loginService;
     }
 
     /**
@@ -77,5 +83,22 @@ public class AuthController {
             @Valid @RequestBody RegisterRequest request) {
 
         return registrationService.register(request);
+    }
+
+    /**
+     * Meldet eine Person an und liefert ein JWT.
+     * Antwortet mit 401, wenn E-Mail oder Passwort falsch sind.
+     *
+     * @param request E-Mail und Passwort
+     * @return Token, Gültigkeit in Sekunden und Rolle
+     */
+    @PostMapping("/login")
+    @Operation(summary = "Anmelden", description = "Prüft E-Mail und Passwort und liefert ein JWT.")
+    @ApiResponse(responseCode = "200", description = "Login erfolgreich")
+    @ApiResponse(responseCode = "401", description = "E-Mail oder Passwort falsch")
+    public LoginResponse login(
+            @Valid @RequestBody LoginRequest request) {
+
+        return loginService.login(request);
     }
 }
