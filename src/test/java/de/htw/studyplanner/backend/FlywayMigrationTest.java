@@ -12,7 +12,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.ActiveProfiles;
 
+   @ActiveProfiles("test")
 /**
  * Prüft, dass die Anwendung auf einer leeren Datenbank startet
  * und Flyway dabei alle Tabellen aus V1 anlegt.

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import de.htw.studyplanner.backend.dto.FieldErrorResponse;
 import de.htw.studyplanner.backend.service.EmailAlreadyExistsException;
+import de.htw.studyplanner.backend.service.InvalidCredentialsException;
 import de.htw.studyplanner.backend.service.InvalidSemesterFormatException;
 
 /**
@@ -33,6 +34,18 @@ public class ApiExceptionHandler {
                 .status(HttpStatus.CONFLICT)
                 .body(new FieldErrorResponse("email", "E-Mail ist bereits vergeben"));
     }
+
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<Map<String, String>> invalidCredentials(
+            InvalidCredentialsException exception) {
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of(
+                        "message", exception.getMessage()
+                ));
+    }
+
 
     /**
      * Antwortet mit 400, wenn ein Semester-String nicht dem Format "WS JJJJ" oder "SS JJJJ" entspricht.
