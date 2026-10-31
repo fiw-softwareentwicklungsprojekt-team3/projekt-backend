@@ -9,10 +9,8 @@ import de.htw.studyplanner.backend.dto.RegisterResponse;
 import de.htw.studyplanner.backend.model.Nutzende;
 import de.htw.studyplanner.backend.model.Rolle;
 import de.htw.studyplanner.backend.model.Semester;
-import de.htw.studyplanner.backend.model.SemesterArt;
 import de.htw.studyplanner.backend.model.Studierende;
 import de.htw.studyplanner.backend.repository.NutzendeRepository;
-import de.htw.studyplanner.backend.repository.SemesterRepository;
 import de.htw.studyplanner.backend.repository.StudierendeRepository;
 
 /**
@@ -24,7 +22,7 @@ public class RegistrationService {
 
     private final NutzendeRepository nutzendeRepository;
     private final StudierendeRepository studierendeRepository;
-    private final SemesterRepository semesterRepository;
+    private final SemesterService semesterService;
     private final PasswordEncoder passwordEncoder;
 
     /**
@@ -38,11 +36,11 @@ public class RegistrationService {
     public RegistrationService(
             NutzendeRepository nutzendeRepository,
             StudierendeRepository studierendeRepository,
-            SemesterRepository semesterRepository,
+            SemesterService semesterService,
             PasswordEncoder passwordEncoder) {
         this.nutzendeRepository = nutzendeRepository;
         this.studierendeRepository = studierendeRepository;
-        this.semesterRepository = semesterRepository;
+        this.semesterService = semesterService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -63,13 +61,8 @@ public class RegistrationService {
             throw new EmailAlreadyExistsException();
         }
 
-        int jahr = Integer.parseInt(request.startsemester().substring(3));
-
-        Semester semester = semesterRepository
-                .findByJahrAndArt(jahr, SemesterArt.WS)
-                .orElseGet(() ->
-                        semesterRepository.save(
-                                new Semester(jahr, SemesterArt.WS)));
+        Semester parsed = semesterService.parse(request.startsemester());
+        Semester semester = semesterService.findenOderNeuAnlegen(parsed.getJahr(), parsed.getArt());
 
         String passwortHash = passwordEncoder.encode(request.password());
 
@@ -89,7 +82,7 @@ public class RegistrationService {
                 nutzende.getNutzendeId(),
                 nutzende.getEmail(),
                 nutzende.getRolle().name(),
-                request.startsemester()
+                semester.label()
         );
     }
 }

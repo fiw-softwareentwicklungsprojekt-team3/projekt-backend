@@ -1,5 +1,7 @@
 package de.htw.studyplanner.backend.controller;
 
+import java.util.Map;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -9,7 +11,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import de.htw.studyplanner.backend.dto.FieldErrorResponse;
 import de.htw.studyplanner.backend.service.EmailAlreadyExistsException;
 import de.htw.studyplanner.backend.service.InvalidCredentialsException;
-import java.util.Map;
+import de.htw.studyplanner.backend.service.InvalidSemesterFormatException;
 
 /**
  * Wandelt Fehler aus den Controllern in eine {@link FieldErrorResponse} um,
@@ -44,6 +46,23 @@ public class ApiExceptionHandler {
                 ));
     }
 
+
+    /**
+     * Antwortet mit 400, wenn ein Semester-String nicht dem Format "WS JJJJ" oder "SS JJJJ" entspricht.
+     *
+     * @param exception der Fehler aus dem SemesterService
+     * @return Status 400 mit Feld {@code semester} und Fehlermeldung
+     */
+    @ExceptionHandler(InvalidSemesterFormatException.class)
+    public ResponseEntity<Map<String, String>> invalidSemesterFormat(
+            InvalidSemesterFormatException exception) {
+        return ResponseEntity
+                .badRequest()
+                .body(Map.of(
+                        "field", "semester",
+                        "message", exception.getMessage()
+                ));
+    }
 
     /**
      * Antwortet mit 400, wenn ein Request-Body die Validierung nicht besteht.
