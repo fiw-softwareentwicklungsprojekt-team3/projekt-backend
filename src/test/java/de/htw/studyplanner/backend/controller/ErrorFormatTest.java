@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import de.htw.studyplanner.backend.TestcontainersConfiguration;
 import de.htw.studyplanner.backend.security.ApiErrorWriter;
 import de.htw.studyplanner.backend.security.RestAccessDeniedHandler;
 import org.junit.jupiter.api.Test;
@@ -23,11 +24,13 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(TestcontainersConfiguration.class)
 class ErrorFormatTest {
 
     @Autowired
