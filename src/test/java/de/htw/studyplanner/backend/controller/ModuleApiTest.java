@@ -143,17 +143,17 @@ class ModuleApiTest {
     void ungueltigeFilterwerteLiefern400() throws Exception {
         mockMvc.perform(authenticatedGet("/api/modules").param("semester", "0"))
                 .andExpect(status().isBadRequest())
-                .andExpect(status().reason(containsString("semester")));
+                .andExpect(jsonPath("$.message", containsString("semester")));
         mockMvc.perform(authenticatedGet("/api/modules").param("semester", "7"))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(authenticatedGet("/api/modules").param("semester", "abc"))
                 .andExpect(status().isBadRequest());
         mockMvc.perform(authenticatedGet("/api/modules").param("type", "X"))
                 .andExpect(status().isBadRequest())
-                .andExpect(status().reason(containsString("type")));
+                .andExpect(jsonPath("$.message", containsString("type")));
         mockMvc.perform(authenticatedGet("/api/modules").param("term", "SOMMER"))
                 .andExpect(status().isBadRequest())
-                .andExpect(status().reason(containsString("term")));
+                .andExpect(jsonPath("$.message", containsString("term")));
         // BEIDE ist nur ein Wert der Module, kein erlaubter Filterwert
         mockMvc.perform(authenticatedGet("/api/modules").param("term", "BEIDE"))
                 .andExpect(status().isBadRequest());
@@ -212,6 +212,6 @@ class ModuleApiTest {
     void unbekannterCodeLiefert404() throws Exception {
         mockMvc.perform(authenticatedGet("/api/modules/X99"))
                 .andExpect(status().isNotFound())
-                .andExpect(status().reason(containsString("X99")));
+                .andExpect(jsonPath("$.message", containsString("X99")));
     }
 }

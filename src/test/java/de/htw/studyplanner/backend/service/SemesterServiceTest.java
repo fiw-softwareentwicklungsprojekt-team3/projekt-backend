@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDate;
-import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -17,9 +16,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import de.htw.studyplanner.backend.controller.ApiExceptionHandler;
+import de.htw.studyplanner.backend.dto.ApiError;
 import de.htw.studyplanner.backend.dto.RegisterRequest;
 import de.htw.studyplanner.backend.dto.RegisterResponse;
 import de.htw.studyplanner.backend.model.Semester;
@@ -113,13 +114,19 @@ class SemesterServiceTest {
         ApiExceptionHandler handler = new ApiExceptionHandler();
         InvalidSemesterFormatException exception =
                 new InvalidSemesterFormatException("semester muss das Format 'WS JJJJ' oder 'SS JJJJ' haben");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/auth/register");
 
-        ResponseEntity<Map<String, String>> response = handler.InvalidSemesterFormatException(exception);
+        ResponseEntity<ApiError> response = handler.handleInvalidSemester(exception, request);
 
         assertThat(response.getStatusCode().value()).isEqualTo(400);
         assertThat(response.getBody())
-                .containsEntry("field", "semester")
-                .containsKey("message");
+                .isNotNull();
+        assertThat(response.getBody().errors())
+                .hasSize(1);
+        assertThat(response.getBody().errors().get(0).field())
+                .isEqualTo("semester");
+        assertThat(response.getBody().message())
+                .isEqualTo("Das Semester hat ein ungültiges Format.");
     }
 
     // ------------------------------------------------------------------
