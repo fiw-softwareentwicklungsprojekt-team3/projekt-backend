@@ -1,7 +1,8 @@
 package de.htw.studyplanner.backend.config;
 
 import de.htw.studyplanner.backend.security.JwtAuthenticationFilter;
-import jakarta.servlet.http.HttpServletResponse;
+import de.htw.studyplanner.backend.security.RestAccessDeniedHandler;
+import de.htw.studyplanner.backend.security.RestAuthenticationEntryPoint;
 import org.springframework.http.HttpMethod;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,8 +22,10 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
-            throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            RestAuthenticationEntryPoint authenticationEntryPoint,
+            RestAccessDeniedHandler accessDeniedHandler) throws Exception {
 
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -31,11 +34,10 @@ public class SecurityConfig {
                         .sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS))
 
+                // Hier ist der neue, angepasste Block für dein einheitliches Fehlerformat
                 .exceptionHandling(exceptionHandling -> exceptionHandling
-                        .authenticationEntryPoint((request, response, exception) ->
-                                response.sendError(
-                                        HttpServletResponse.SC_UNAUTHORIZED,
-                                        "Authentifizierung erforderlich")))
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
 
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/api/auth/**")

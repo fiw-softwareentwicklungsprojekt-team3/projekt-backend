@@ -1,11 +1,17 @@
 package de.htw.studyplanner.backend.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Info;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
+import io.swagger.v3.core.converter.ModelConverters;
+import io.swagger.v3.oas.models.Components;
+import org.springdoc.core.customizers.OpenApiCustomizer;
+
+import de.htw.studyplanner.backend.dto.ApiError;
 
 /**
  * Allgemeine Angaben für die OpenAPI-Spezifikation (Titel, Version, Beschreibung).
@@ -28,4 +34,15 @@ import io.swagger.v3.oas.annotations.security.SecurityScheme;
                 `GET /api/health` und Swagger.
                 """))
 public class OpenApiConfig {
+
+    @Bean
+    public OpenApiCustomizer errorSchemaCustomizer() {
+        return openApi -> {
+            if (openApi.getComponents() == null) {
+                openApi.setComponents(new Components());
+            }
+            ModelConverters.getInstance().read(ApiError.class)
+                    .forEach((name, schema) -> openApi.getComponents().addSchemas(name, schema));
+        };
+    }
 }

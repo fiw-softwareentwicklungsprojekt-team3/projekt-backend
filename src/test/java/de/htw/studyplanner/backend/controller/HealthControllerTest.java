@@ -37,4 +37,13 @@ class HealthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
     }
+
+    // Neuer Test für den ungültigen Token mit der ergänzten JSON-Prüfung
+    @Test
+    void ungueltigerTokenGibt401() throws Exception {
+        mockMvc.perform(get("/api/protected-route") // Passe diese Route an, falls es eine spezifische geschützte Route für den Test gibt
+                .header("Authorization", "Bearer ungueltiger.token.hier"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401));
+    }
 }

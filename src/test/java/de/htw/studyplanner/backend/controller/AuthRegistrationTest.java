@@ -113,7 +113,8 @@ class AuthRegistrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.field").value("email"));
+                // HIER GEÄNDERT: Angepasst auf das neue Fehlerformat (errors-Array)
+                .andExpect(jsonPath("$.errors[0].field").value("email"));
     }
 
     @Test
@@ -130,7 +131,8 @@ class AuthRegistrationTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.field").value("email"));
+                // HIER GEÄNDERT: Angepasst auf das neue Fehlerformat (errors-Array)
+                .andExpect(jsonPath("$.errors[0].field").value("email"));
     }
 
     @Test
@@ -147,7 +149,8 @@ class AuthRegistrationTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.field").value("password"));
+                // HIER GEÄNDERT: Angepasst auf das neue Fehlerformat (errors-Array)
+                .andExpect(jsonPath("$.errors[0].field").value("password"));
     }
 
     @Test
@@ -164,7 +167,8 @@ class AuthRegistrationTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.field").value("startsemester"));
+                // HIER GEÄNDERT: Angepasst auf das neue Fehlerformat (errors-Array)
+                .andExpect(jsonPath("$.errors[0].field").value("startsemester"));
     }
 
     @Test

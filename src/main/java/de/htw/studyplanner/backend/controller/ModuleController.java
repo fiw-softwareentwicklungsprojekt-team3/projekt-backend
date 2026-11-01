@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import de.htw.studyplanner.backend.dto.ApiErrorResponse;
+import de.htw.studyplanner.backend.dto.ApiError;
 import de.htw.studyplanner.backend.dto.ModuleDetailDto;
 import de.htw.studyplanner.backend.dto.ModuleDto;
 import de.htw.studyplanner.backend.service.ModuleService;
@@ -57,7 +57,7 @@ public class ModuleController {
     @ApiResponse(responseCode = "400",
             description = "Ungültiger Filterwert, z. B. fachsemester=7, art=X oder turnus=BEIDE",
             content = @Content(mediaType = "application/json",
-                    schema = @Schema(implementation = ApiErrorResponse.class),
+                    schema = @Schema(implementation = ApiError.class),
                     examples = @ExampleObject(value = """
                             {
                               "timestamp": "2026-10-27T09:00:00.000+00:00",
@@ -90,7 +90,7 @@ public class ModuleController {
     @ApiResponse(responseCode = "200", description = "Das Modul mit Voraussetzungen")
     @ApiResponse(responseCode = "404", description = "Es gibt kein Modul mit diesem Code",
             content = @Content(mediaType = "application/json",
-                    schema = @Schema(implementation = ApiErrorResponse.class),
+                    schema = @Schema(implementation = ApiError.class),
                     examples = @ExampleObject(value = """
                             {
                               "timestamp": "2026-10-27T09:00:00.000+00:00",

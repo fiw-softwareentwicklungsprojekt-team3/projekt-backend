@@ -8,8 +8,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-
-import de.htw.studyplanner.backend.dto.FieldErrorResponse;
 import de.htw.studyplanner.backend.dto.LoginRequest;
 import de.htw.studyplanner.backend.dto.LoginResponse;
 import de.htw.studyplanner.backend.dto.RegisterRequest;
@@ -61,29 +59,14 @@ public class AuthController {
                     Das Studium beginnt immer im Wintersemester, deshalb ist nur `WS JJJJ` erlaubt.
                     Gibt es das Startsemester noch nicht, wird es angelegt.""")
     @ApiResponse(responseCode = "201", description = "Person wurde angelegt")
-    @ApiResponse(responseCode = "400",
-            description = "Eingabe ungültig, z. B. E-Mail falsch, Passwort zu kurz oder Startsemester nicht im Format WS JJJJ. "
-                    + "Es wird nur das erste fehlerhafte Feld gemeldet.",
-            content = @Content(mediaType = "application/json",
-                    schema = @Schema(implementation = FieldErrorResponse.class),
-                    examples = @ExampleObject(value = """
-                            {
-                              "field": "password",
-                              "message": "password muss mindestens 8 Zeichen haben"
-                            }""")))
-    @ApiResponse(responseCode = "409", description = "Die E-Mail ist bereits vergeben",
-            content = @Content(mediaType = "application/json",
-                    schema = @Schema(implementation = FieldErrorResponse.class),
-                    examples = @ExampleObject(value = """
-                            {
-                              "field": "email",
-                              "message": "E-Mail ist bereits vergeben"
-                            }""")))
+    @ApiResponse(responseCode = "400", description = "Eingabe ungültig, z. B. E-Mail falsch oder Passwort zu kurz. Alle fehlerhaften Felder werden in errors gelistet.")
+    @ApiResponse(responseCode = "409", description = "Die E-Mail ist bereits vergeben")
     public RegisterResponse register(
             @Valid @RequestBody RegisterRequest request) {
 
         return registrationService.register(request);
     }
+
 
     /**
      * Meldet eine Person an und liefert ein JWT.

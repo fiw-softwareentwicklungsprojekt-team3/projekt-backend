@@ -114,7 +114,7 @@ class SemesterServiceTest {
         InvalidSemesterFormatException exception =
                 new InvalidSemesterFormatException("semester muss das Format 'WS JJJJ' oder 'SS JJJJ' haben");
 
-        ResponseEntity<Map<String, String>> response = handler.invalidSemesterFormat(exception);
+        ResponseEntity<Map<String, String>> response = handler.InvalidSemesterFormatException(exception);
 
         assertThat(response.getStatusCode().value()).isEqualTo(400);
         assertThat(response.getBody())
