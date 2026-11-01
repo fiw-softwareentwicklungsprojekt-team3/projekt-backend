@@ -5,7 +5,6 @@ import de.htw.studyplanner.backend.dto.ApiFieldError;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import de.htw.studyplanner.backend.exception.ConflictException;
 import de.htw.studyplanner.backend.exception.NotFoundException;
+import de.htw.studyplanner.backend.service.InvalidCredentialsException;
 import de.htw.studyplanner.backend.service.InvalidSemesterFormatException;
 
 @RestControllerAdvice
@@ -111,6 +111,11 @@ public class ApiExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, "Bitte melde dich an, um fortzufahren.", req, null);
     }
 
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest req) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), req, null);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiError> handleAccessDenied(AccessDeniedException ex, HttpServletRequest req) {
         return build(HttpStatus.FORBIDDEN, "Dafür hast du keine Berechtigung.", req, null);
@@ -135,10 +140,5 @@ public class ApiExceptionHandler {
     private ResponseEntity<ApiError> build(HttpStatus status, String message, HttpServletRequest req,
                                            List<ApiFieldError> errors) {
         return ResponseEntity.status(status).body(ApiError.of(status, message, req.getRequestURI(), errors));
-    }
-
-    public ResponseEntity<Map<String, String>> InvalidSemesterFormatException(InvalidSemesterFormatException exception) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'InvalidSemesterFormatException'");
     }
 }
