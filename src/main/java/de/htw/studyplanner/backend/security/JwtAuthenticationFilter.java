@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.List;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -19,11 +20,14 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtService jwtService;
+private final JwtService jwtService;
+private final ApiErrorWriter apiErrorWriter;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
-        this.jwtService = jwtService;
-    }
+public JwtAuthenticationFilter(JwtService jwtService, ApiErrorWriter apiErrorWriter) {
+    this.jwtService = jwtService;
+    this.apiErrorWriter = apiErrorWriter;
+    
+}
 
     @Override
     protected void doFilterInternal(
@@ -44,11 +48,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = authorizationHeader.substring("Bearer ".length());
 
         if (!jwtService.isValid(token)) {
-            response.sendError(
-                    HttpServletResponse.SC_UNAUTHORIZED,
-                    "Token ist ungültig oder abgelaufen");
-            return;
-        }
+    apiErrorWriter.writeError(
+            request,
+            response, 
+            HttpStatus.UNAUTHORIZED,
+            "Dein Token ist ungültig oder abgelaufen. Bitte melde dich erneut an."
+    );
+    return;
+}
 
         Claims claims = jwtService.parseClaims(token);
 

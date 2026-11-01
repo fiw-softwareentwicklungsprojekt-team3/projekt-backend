@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import de.htw.studyplanner.backend.dto.RegisterRequest;
 import de.htw.studyplanner.backend.dto.RegisterResponse;
+import de.htw.studyplanner.backend.exception.ConflictException;
 import de.htw.studyplanner.backend.model.Nutzende;
 import de.htw.studyplanner.backend.model.Rolle;
 import de.htw.studyplanner.backend.model.Semester;
@@ -30,7 +31,7 @@ public class RegistrationService {
      *
      * @param nutzendeRepository    Zugriff auf die Konten
      * @param studierendeRepository Zugriff auf die Studierenden-Einträge
-     * @param semesterRepository    Zugriff auf die Semester
+     * @param semesterService       Zugriff auf die Semester
      * @param passwordEncoder       erzeugt den Passwort-Hash (BCrypt)
      */
     public RegistrationService(
@@ -53,12 +54,14 @@ public class RegistrationService {
      *
      * @param request bereits validierte Eingaben; startsemester hat das Format "WS JJJJ"
      * @return die angelegte Person ohne Passwort
-     * @throws EmailAlreadyExistsException wenn es die E-Mail schon gibt (führt zu Status 409)
+     * @throws ConflictException wenn es die E-Mail schon gibt (führt zu Status 409)
      */
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
+        
+        // HIER IST DIE ÄNDERUNG: Nutzt jetzt dein neues Fehlerformat
         if (nutzendeRepository.findByEmail(request.email()).isPresent()) {
-            throw new EmailAlreadyExistsException();
+            throw new ConflictException("Diese E-Mail-Adresse ist bereits vergeben.");
         }
 
         Semester parsed = semesterService.parse(request.startsemester());

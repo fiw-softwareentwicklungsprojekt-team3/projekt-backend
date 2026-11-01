@@ -113,7 +113,7 @@ class AuthRegistrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.field").value("email"));
+                .andExpect(jsonPath("$.message").value("Diese E-Mail-Adresse ist bereits vergeben."));
     }
 
     @Test
@@ -130,7 +130,7 @@ class AuthRegistrationTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.field").value("email"));
+                .andExpect(jsonPath("$.errors[0].field").value("email"));
     }
 
     @Test
@@ -147,7 +147,7 @@ class AuthRegistrationTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.field").value("password"));
+                .andExpect(jsonPath("$.errors[0].field").value("password"));
     }
 
     @Test
@@ -164,7 +164,7 @@ class AuthRegistrationTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.field").value("startsemester"));
+                .andExpect(jsonPath("$.errors[0].field").value("startsemester"));
     }
 
     @Test

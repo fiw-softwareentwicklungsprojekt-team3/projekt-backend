@@ -8,8 +8,8 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import de.htw.studyplanner.backend.security.JwtService;
 import de.htw.studyplanner.backend.security.JwtAuthenticationFilter;
+import de.htw.studyplanner.backend.security.JwtService;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
