@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 import de.htw.studyplanner.backend.dto.ModuleDetailDto;
 import de.htw.studyplanner.backend.dto.ModuleDto;
 import de.htw.studyplanner.backend.dto.PrerequisiteDto;
+import de.htw.studyplanner.backend.exception.NotFoundException;
 import de.htw.studyplanner.backend.model.Modul;
 import de.htw.studyplanner.backend.model.ModulArt;
 import de.htw.studyplanner.backend.model.Turnus;
@@ -42,7 +43,7 @@ public class ModuleService {
     /**
      * Erstellt den Service.
      *
-     * @param modulRepository         Zugriff auf die Module
+     * @param modulRepository       Zugriff auf die Module
      * @param voraussetzungRepository Zugriff auf die Voraussetzungen
      */
     public ModuleService(ModulRepository modulRepository,
@@ -85,11 +86,11 @@ public class ModuleService {
      *
      * @param code Modulcode, z. B. "B34"
      * @return das Modul mit Voraussetzungen
-     * @throws ResponseStatusException mit Status 404, wenn es den Code nicht gibt
+     * @throws NotFoundException wenn es den Code nicht gibt
      */
     public ModuleDetailDto get(String code) {
         Modul modul = modulRepository.findById(code)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new NotFoundException(
                         "Modul mit dem Code " + code + " wurde nicht gefunden."));
 
         List<PrerequisiteDto> voraussetzungen = voraussetzungRepository.findByModul_Code(code).stream()
