@@ -21,6 +21,11 @@ public class SemesterService {
 
     private static final Pattern SEMESTER_PATTERN = Pattern.compile("^(WS|SS) (\\d{4})$");
 
+    /** Kleinstes erlaubtes Jahr, wie der CHECK auf semester.jahr in V1. */
+    static final int MIN_JAHR = 2000;
+    /** Größtes erlaubtes Jahr, wie der CHECK auf semester.jahr in V1. */
+    static final int MAX_JAHR = 2100;
+
     private final SemesterRepository semesterRepository;
 
     /**
@@ -80,12 +85,26 @@ public class SemesterService {
     }
 
     /**
+     * Prüft, ob ein Semester am gegebenen Datum schon vorbei ist, also vor dem
+     * aktuellen Semester liegt. Das laufende Semester ist nicht vorbei.
+     * Das Datum kommt als Parameter, damit Tests nicht vom heutigen Tag abhängen.
+     *
+     * @param semester das zu prüfende Semester
+     * @param datum    das Datum, zu dem geprüft wird
+     * @return {@code true}, wenn {@code semester} vor {@link #aktuellesSemester(LocalDate)} liegt
+     */
+    public boolean istVorbei(Semester semester, LocalDate datum) {
+        return istFrueher(semester, aktuellesSemester(datum));
+    }
+
+    /**
      * Zerlegt einen Semester-String im Format {@code "WS JJJJ"} oder {@code "SS JJJJ"}
      * in Jahr und Art.
      *
      * @param text Semester-String, z. B. {@code "SS 2027"} oder {@code "WS 2026"}
      * @return ein {@link Semester}-Objekt mit dem gelesenen Jahr und der Art
-     * @throws InvalidSemesterFormatException wenn das Format ungültig ist
+     * @throws InvalidSemesterFormatException wenn das Format ungültig ist oder das Jahr
+     *                                        außerhalb von 2000–2100 liegt
      */
     public Semester parse(String text) {
         if (text == null) {
@@ -99,6 +118,11 @@ public class SemesterService {
         }
         SemesterArt art = SemesterArt.valueOf(matcher.group(1));
         int jahr = Integer.parseInt(matcher.group(2));
+        // Gleiche Grenzen wie in der Datenbank, sonst käme beim Speichern ein 500 statt 400.
+        if (jahr < MIN_JAHR || jahr > MAX_JAHR) {
+            throw new InvalidSemesterFormatException(
+                    "semester muss ein Jahr zwischen " + MIN_JAHR + " und " + MAX_JAHR + " haben");
+        }
         return new Semester(jahr, art);
     }
 
