@@ -119,6 +119,20 @@ class SemesterServiceTest {
     }
 
     @Test
+    void parseMitFeldnameNenntDiesesFeldImFehler() {
+        assertThatThrownBy(() -> semesterService.parse("WS 1999", "startsemester"))
+                .isInstanceOfSatisfying(InvalidSemesterFormatException.class, ex -> {
+                    assertThat(ex.getFeld()).isEqualTo("startsemester");
+                    assertThat(ex.getMessage()).startsWith("startsemester");
+                });
+
+        // Ohne Feldname bleibt es beim Standardfeld "semester".
+        assertThatThrownBy(() -> semesterService.parse("WS 1999"))
+                .isInstanceOfSatisfying(InvalidSemesterFormatException.class,
+                        ex -> assertThat(ex.getFeld()).isEqualTo("semester"));
+    }
+
+    @Test
     void parseAkzeptiertDieGrenzjahre2000Und2100() {
         assertThat(semesterService.parse("WS 2000").getJahr()).isEqualTo(2000);
         assertThat(semesterService.parse("SS 2100").getJahr()).isEqualTo(2100);

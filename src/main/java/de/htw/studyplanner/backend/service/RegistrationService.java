@@ -64,7 +64,8 @@ public class RegistrationService {
             throw new ConflictException("Diese E-Mail-Adresse ist bereits vergeben.");
         }
 
-        Semester parsed = semesterService.parse(request.startsemester());
+        // Feldname wie im Request, damit errors[].field "startsemester" heißt (wie beim @Pattern-Fehler).
+        Semester parsed = semesterService.parse(request.startsemester(), "startsemester");
         Semester semester = semesterService.findenOderNeuAnlegen(parsed.getJahr(), parsed.getArt());
 
         String passwortHash = passwordEncoder.encode(request.password());

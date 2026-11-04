@@ -104,24 +104,38 @@ public class SemesterService {
      * @param text Semester-String, z. B. {@code "SS 2027"} oder {@code "WS 2026"}
      * @return ein {@link Semester}-Objekt mit dem gelesenen Jahr und der Art
      * @throws InvalidSemesterFormatException wenn das Format ungültig ist oder das Jahr
-     *                                        außerhalb von 2000–2100 liegt
+     *                                        außerhalb von 2000–2100 liegt; Feld {@code semester}
      */
     public Semester parse(String text) {
+        return parse(text, InvalidSemesterFormatException.STANDARD_FELD);
+    }
+
+    /**
+     * Wie {@link #parse(String)}, aber der Fehler nennt das angegebene Request-Feld,
+     * damit {@code errors[].field} zum Request passt (z. B. {@code startsemester}).
+     *
+     * @param text Semester-String, z. B. {@code "WS 2026"}
+     * @param feld Name des Request-Feldes, aus dem {@code text} stammt
+     * @return ein {@link Semester}-Objekt mit dem gelesenen Jahr und der Art
+     * @throws InvalidSemesterFormatException wenn das Format ungültig ist oder das Jahr
+     *                                        außerhalb von 2000–2100 liegt
+     */
+    public Semester parse(String text, String feld) {
         if (text == null) {
-            throw new InvalidSemesterFormatException(
-                    "semester muss das Format 'WS JJJJ' oder 'SS JJJJ' haben");
+            throw new InvalidSemesterFormatException(feld,
+                    feld + " muss das Format 'WS JJJJ' oder 'SS JJJJ' haben");
         }
         Matcher matcher = SEMESTER_PATTERN.matcher(text);
         if (!matcher.matches()) {
-            throw new InvalidSemesterFormatException(
-                    "semester muss das Format 'WS JJJJ' oder 'SS JJJJ' haben");
+            throw new InvalidSemesterFormatException(feld,
+                    feld + " muss das Format 'WS JJJJ' oder 'SS JJJJ' haben");
         }
         SemesterArt art = SemesterArt.valueOf(matcher.group(1));
         int jahr = Integer.parseInt(matcher.group(2));
         // Gleiche Grenzen wie in der Datenbank, sonst käme beim Speichern ein 500 statt 400.
         if (jahr < MIN_JAHR || jahr > MAX_JAHR) {
-            throw new InvalidSemesterFormatException(
-                    "semester muss ein Jahr zwischen " + MIN_JAHR + " und " + MAX_JAHR + " haben");
+            throw new InvalidSemesterFormatException(feld,
+                    feld + " muss ein Jahr zwischen " + MIN_JAHR + " und " + MAX_JAHR + " haben");
         }
         return new Semester(jahr, art);
     }
