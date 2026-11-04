@@ -70,7 +70,7 @@ public class ApiExceptionHandler {
     public ResponseEntity<ApiError> handleInvalidSemester(InvalidSemesterFormatException ex, HttpServletRequest req) {
         return build(HttpStatus.BAD_REQUEST,
                 "Das Semester hat ein ungültiges Format.", req,
-                List.of(new ApiFieldError("semester", ex.getMessage())));
+                List.of(new ApiFieldError(ex.getFeld(), ex.getMessage())));
     }
 
     // 404

@@ -168,6 +168,41 @@ class AuthRegistrationTest {
     }
 
     @Test
+    void startsemesterAusserhalbVon2000Bis2100Liefert400StattServerfehler()
+            throws Exception {
+
+        // "WS 1999" passt zum @Pattern, das Jahr prüft erst der SemesterService.
+        // Ohne diese Prüfung käme der CHECK der Datenbank und damit ein 500.
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "jahr1999@example.com",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 1999"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("startsemester"));
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "jahr2101@example.com",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 2101"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("startsemester"));
+
+        // Es wurde niemand angelegt.
+        assertThat(nutzendeRepository.findByEmail("jahr1999@example.com")).isEmpty();
+        assertThat(nutzendeRepository.findByEmail("jahr2101@example.com")).isEmpty();
+    }
+
+    @Test
     void rolleWirdImmerAufStudierendeGesetzt()
             throws Exception {
 
