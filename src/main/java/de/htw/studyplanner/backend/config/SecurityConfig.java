@@ -50,6 +50,14 @@ public class SecurityConfig {
                                 "/v3/api-docs/**"
                         )
                         .permitAll()
+                        // hasRole("X") prüft die Authority "ROLE_X" aus dem JwtAuthenticationFilter.
+                        .requestMatchers("/api/plan/**", "/api/results/**")
+                        .hasRole("STUDIERENDE")
+                        .requestMatchers("/api/statistics/**")
+                        .hasRole("PROFESSOR_IN")
+                        // Alle angemeldeten Rollen.
+                        .requestMatchers("/api/modules/**", "/api/auth/me")
+                        .authenticated()
                         .anyRequest()
                         .authenticated())
 
