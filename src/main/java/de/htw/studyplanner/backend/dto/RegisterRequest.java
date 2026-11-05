@@ -1,13 +1,16 @@
 package de.htw.studyplanner.backend.dto;
 
+import de.htw.studyplanner.backend.dto.validation.GueltigeEmail;
+import de.htw.studyplanner.backend.dto.validation.GueltigesPasswort;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Size;
 
 /**
  * Daten für die Registrierung ({@code POST /api/auth/register}).
+ *
+ * <p>E-Mail- und Passwort-Regeln kommen aus {@link GueltigeEmail} und
+ * {@link GueltigesPasswort}, damit sie für alle Registrierungen gleich sind.
  *
  * @param email         E-Mail-Adresse, muss eindeutig sein
  * @param password      Passwort im Klartext, mindestens 8 Zeichen; gespeichert wird nur der Hash
@@ -16,13 +19,11 @@ import jakarta.validation.constraints.Size;
 @Schema(description = "Daten für die Registrierung")
 public record RegisterRequest(
         @Schema(description = "E-Mail-Adresse, muss eindeutig sein", example = "studentin@example.com")
-        @NotBlank(message = "email darf nicht leer sein")
-        @Email(message = "email ist ungültig")
+        @GueltigeEmail
         String email,
 
         @Schema(description = "Passwort, mindestens 8 Zeichen", example = "geheimesPasswort", minLength = 8)
-        @NotBlank(message = "password darf nicht leer sein")
-        @Size(min = 8, message = "password muss mindestens 8 Zeichen haben")
+        @GueltigesPasswort
         String password,
 
         @Schema(description = "Startsemester, nur Wintersemester erlaubt", example = "WS 2025",
