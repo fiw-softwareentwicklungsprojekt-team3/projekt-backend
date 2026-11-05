@@ -64,8 +64,10 @@ public JwtAuthenticationFilter(JwtService jwtService, ApiErrorWriter apiErrorWri
 
         var authority = new SimpleGrantedAuthority("ROLE_" + rolle);
 
+                Integer id = Integer.valueOf(claims.getSubject());
+
         var authentication = new UsernamePasswordAuthenticationToken(
-                email,
+                new AngemeldetePerson(id, email),
                 null,
                 List.of(authority));
 
@@ -75,11 +77,14 @@ public JwtAuthenticationFilter(JwtService jwtService, ApiErrorWriter apiErrorWri
 
         filterChain.doFilter(request, response);
     }
-    @Override 
-    protected boolean shouldNotFilter(HttpServletRequest request){
-        return request.getServletPath().startsWith("/api/auth") 
-                || request.getServletPath().startsWith("/api/health")
-                || request.getServletPath().startsWith("/swagger-ui")
-                || request.getServletPath().startsWith("/v3/api-docs"); 
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String pfad = request.getServletPath();
+        // Nur Login und Registrierung brauchen kein Token. /api/auth/me muss gefiltert werden.
+        return pfad.equals("/api/auth/login")
+                || pfad.equals("/api/auth/register")
+                || pfad.startsWith("/api/health")
+                || pfad.startsWith("/swagger-ui")
+                || pfad.startsWith("/v3/api-docs");
     }
 }
