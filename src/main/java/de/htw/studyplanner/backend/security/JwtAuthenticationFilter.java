@@ -80,7 +80,7 @@ public JwtAuthenticationFilter(JwtService jwtService, ApiErrorWriter apiErrorWri
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String pfad = request.getServletPath();
-        // Nur Login und Registrierung brauchen kein Token. /api/auth/me muss gefiltert werden.
+        // Nur Login und Registrierung brauchen kein Token. /api/me muss gefiltert werden.
         return pfad.equals("/api/auth/login")
                 || pfad.equals("/api/auth/register")
                 || pfad.startsWith("/api/health")

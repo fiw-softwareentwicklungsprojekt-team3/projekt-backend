@@ -55,7 +55,7 @@ class AuthRegistrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email")
                         .value("erfolg@example.com"))
-                .andExpect(jsonPath("$.rolle")
+                .andExpect(jsonPath("$.role")
                         .value("STUDIERENDE"))
                 .andExpect(jsonPath("$.passwortHash")
                         .doesNotExist());
@@ -217,7 +217,7 @@ class AuthRegistrationTest {
                                 }
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.rolle")
+                .andExpect(jsonPath("$.role")
                         .value("STUDIERENDE"));
 
         var nutzende = nutzendeRepository
