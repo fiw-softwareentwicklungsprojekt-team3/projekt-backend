@@ -281,8 +281,9 @@ class SemesterServiceTest {
         when(semesterRepository.findByJahrAndArt(2026, SemesterArt.WS))
                 .thenReturn(Optional.of(new Semester(2026, SemesterArt.WS)));
 
+        KontoService kontoService = new KontoService(nutzendeRepo, passwordEncoder);
         RegistrationService registrationService = new RegistrationService(
-                nutzendeRepo, studierendeRepo, semesterService, passwordEncoder);
+                kontoService, studierendeRepo, semesterService);
 
         RegisterResponse response = registrationService.register(
                 new RegisterRequest(
