@@ -59,7 +59,7 @@ public class RegistrationService {
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
         
-        // HIER IST DIE ÄNDERUNG: Nutzt jetzt dein neues Fehlerformat
+        // Die E-Mail muss eindeutig sein, sonst Konflikt (409).
         if (nutzendeRepository.findByEmail(request.email()).isPresent()) {
             throw new ConflictException("Diese E-Mail-Adresse ist bereits vergeben.");
         }

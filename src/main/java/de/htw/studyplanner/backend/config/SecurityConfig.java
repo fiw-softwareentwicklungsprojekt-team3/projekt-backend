@@ -34,7 +34,7 @@ public class SecurityConfig {
                         .sessionCreationPolicy(
                                 SessionCreationPolicy.STATELESS))
 
-                // Hier ist der neue, angepasste Block für dein einheitliches Fehlerformat
+                // Einheitliches Fehlerformat für 401 und 403.
                 .exceptionHandling(exceptionHandling -> exceptionHandling
                         .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))

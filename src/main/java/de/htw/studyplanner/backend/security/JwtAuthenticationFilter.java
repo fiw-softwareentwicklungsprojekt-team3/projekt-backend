@@ -62,6 +62,16 @@ public JwtAuthenticationFilter(JwtService jwtService, ApiErrorWriter apiErrorWri
         String email = claims.get("email", String.class);
         String rolle = claims.get("rolle", String.class);
 
+        // Ein Token ohne Rolle wird abgelehnt, sonst entstünde die Rolle "ROLE_null".
+        if (rolle == null) {
+            apiErrorWriter.writeError(
+                    request,
+                    response,
+                    HttpStatus.UNAUTHORIZED,
+                    "Dein Token ist ungültig oder abgelaufen. Bitte melde dich erneut an.");
+            return;
+        }
+
         var authority = new SimpleGrantedAuthority("ROLE_" + rolle);
 
                 Integer id = Integer.valueOf(claims.getSubject());
