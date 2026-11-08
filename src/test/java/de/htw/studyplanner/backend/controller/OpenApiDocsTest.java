@@ -48,7 +48,8 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/modules/{code}'].get.responses['200']").exists())
                 .andExpect(jsonPath("$.paths['/api/modules/{code}'].get.responses['404']").exists())
                 .andExpect(jsonPath("$.paths['/api/me'].get.responses['200']").exists())
-                .andExpect(jsonPath("$.paths['/api/me'].get.responses['401']").exists());
+                .andExpect(jsonPath("$.paths['/api/me'].get.responses['401']").exists())
+                .andExpect(jsonPath("$.paths['/api/me'].get.security[0].bearerAuth").exists());
     }
 
     @Test

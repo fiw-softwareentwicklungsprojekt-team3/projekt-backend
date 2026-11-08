@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
@@ -22,8 +23,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
  * mitfreigegeben werden.
  *
  * <p>Der Controller leitet nur weiter, die Logik steht in {@link MeService}.
+ *
+ * <p>{@code @SecurityRequirement} sorgt dafür, dass Swagger nach „Authorize“ das Token
+ * mitschickt. Ohne die Angabe sendet Swagger die Anfrage ohne Token und bekommt 401.
  */
 @RestController
+@SecurityRequirement(name = "bearerAuth")
 @RequestMapping("/api/me")
 @Tag(name = "Me", description = "Die angemeldete Person")
 public class MeController {
