@@ -17,6 +17,15 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+/**
+ * Liest bei jeder Anfrage das Token aus dem Header {@code Authorization: Bearer ...}.
+ *
+ * <p>Ohne Header läuft die Anfrage unverändert weiter. Ob der Pfad ein Token braucht,
+ * entscheidet die {@link de.htw.studyplanner.backend.config.SecurityConfig}.
+ * Ist das Token ungültig, abgelaufen oder ohne Rolle, antwortet der Filter sofort mit 401.
+ * Bei gültigem Token legt er die Person mit ihrer Rolle im SecurityContext ab
+ * ({@code ROLE_} plus die Rolle aus dem Token).
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -29,6 +38,15 @@ public JwtAuthenticationFilter(JwtService jwtService, ApiErrorWriter apiErrorWri
     
 }
 
+    /**
+     * Prüft das Token der Anfrage und meldet die Person im SecurityContext an.
+     *
+     * @param request     die eingehende Anfrage
+     * @param response    die Antwort; bei ungültigem Token wird hier 401 geschrieben
+     * @param filterChain der Rest der Filterkette
+     * @throws ServletException bei Fehlern in der Filterkette
+     * @throws IOException      bei Fehlern beim Schreiben der Antwort
+     */
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -87,6 +105,15 @@ public JwtAuthenticationFilter(JwtService jwtService, ApiErrorWriter apiErrorWri
 
         filterChain.doFilter(request, response);
     }
+    /**
+     * Legt fest, für welche Pfade der Filter nicht läuft.
+     *
+     * <p>Login, Registrierung, Health, Swagger und die API-Dokumentation brauchen kein Token.
+     * Alle anderen Pfade werden gefiltert.
+     *
+     * @param request die eingehende Anfrage
+     * @return true, wenn der Pfad ohne Token erreichbar ist
+     */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String pfad = request.getServletPath();
