@@ -117,6 +117,40 @@ class AuthRegistrationTest {
     }
 
     @Test
+    void emailWirdKleinGespeichertUndAndereSchreibweiseLiefert409()
+            throws Exception {
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "Mischung@Example.COM",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 2025"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email")
+                        .value("mischung@example.com"));
+
+        // Das Konto ist in Kleinbuchstaben gespeichert.
+        assertThat(nutzendeRepository.findByEmail("mischung@example.com"))
+                .isPresent();
+
+        // Dieselbe Adresse in anderer Schreibweise ist ein Duplikat.
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "mischung@example.com",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 2025"
+                                }
+                                """))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void ungueltigeEmailLiefert400()
             throws Exception {
 

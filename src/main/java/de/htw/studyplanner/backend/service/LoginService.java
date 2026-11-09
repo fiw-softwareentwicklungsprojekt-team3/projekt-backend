@@ -1,5 +1,7 @@
 package de.htw.studyplanner.backend.service;
 
+import java.util.Locale;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -28,7 +30,7 @@ public class LoginService {
 
     public LoginResponse login(LoginRequest request) {
         Nutzende nutzende = nutzendeRepository
-                .findByEmail(request.email())
+                .findByEmail(request.email().toLowerCase(Locale.ROOT))
                 .orElseThrow(InvalidCredentialsException::new);
 
         boolean passwordMatches = passwordEncoder.matches(

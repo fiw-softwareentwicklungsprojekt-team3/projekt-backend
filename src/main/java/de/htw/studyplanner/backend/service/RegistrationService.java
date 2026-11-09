@@ -1,5 +1,7 @@
 package de.htw.studyplanner.backend.service;
 
+import java.util.Locale;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,9 +60,11 @@ public class RegistrationService {
      */
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-        
+
+        // E-Mail wird in Kleinbuchstaben gespeichert und gesucht.
+        String email = request.email().toLowerCase(Locale.ROOT);
         // Die E-Mail muss eindeutig sein, sonst Konflikt (409).
-        if (nutzendeRepository.findByEmail(request.email()).isPresent()) {
+        if (nutzendeRepository.findByEmail(email).isPresent()) {
             throw new ConflictException("Diese E-Mail-Adresse ist bereits vergeben.");
         }
 
@@ -73,7 +77,7 @@ public class RegistrationService {
         // Die Rolle wird immer vom Backend gesetzt.
         Nutzende nutzende = nutzendeRepository.save(
                 new Nutzende(
-                        request.email(),
+                        email,
                         passwortHash,
                         Rolle.STUDIERENDE
                 ));
