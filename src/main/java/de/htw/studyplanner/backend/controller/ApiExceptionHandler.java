@@ -22,6 +22,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import de.htw.studyplanner.backend.exception.ConflictException;
+import de.htw.studyplanner.backend.exception.FieldValidationException;
 import de.htw.studyplanner.backend.exception.NotFoundException;
 import de.htw.studyplanner.backend.exception.UnauthorizedException;
 import de.htw.studyplanner.backend.service.InvalidCredentialsException;
@@ -72,6 +73,14 @@ public class ApiExceptionHandler {
         return build(HttpStatus.BAD_REQUEST,
                 "Das Semester hat ein ungültiges Format.", req,
                 List.of(new ApiFieldError(ex.getFeld(), ex.getMessage())));
+    }
+
+    // 400: fachliche Regel verletzt, das Feld kommt in "errors"
+    @ExceptionHandler(FieldValidationException.class)
+    public ResponseEntity<ApiError> handleFieldValidation(FieldValidationException ex, HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST,
+                "Die Eingabe ist ungültig. Bitte prüfe die markierten Felder.", req,
+                List.of(new ApiFieldError(ex.getField(), ex.getMessage())));
     }
 
     // 404
