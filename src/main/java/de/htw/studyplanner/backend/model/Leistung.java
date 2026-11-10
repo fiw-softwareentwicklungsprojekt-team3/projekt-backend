@@ -69,11 +69,8 @@ public class Leistung {
     private Status status;
 
     /**
-     * Note, z. B. 1.3; {@code null} bei {@link Status#BELEGT} oder unbenoteten Modulen.
-     *
-     * <p>Erlaubte Werte stehen im CHECK {@code chk_leistung_note_erlaubt} in V1
-     * (1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 5.0). Die Prüfung erfolgt
-     * nur in der Datenbank: Ein falscher Wert fällt erst beim Speichern auf.
+   * (1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 5.0). Der ResultService prüft die
+   * Note schon vor dem Speichern (400). Der CHECK in der Datenbank ist eine zusätzliche Absicherung.
      */
     @Column(name = "note", precision = 2, scale = 1)
     private BigDecimal note;
