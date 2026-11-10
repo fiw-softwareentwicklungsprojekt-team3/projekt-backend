@@ -259,6 +259,11 @@ class ResultApiTest {
                 { "status": "BESTANDEN", "semester": "SS 2028" }""")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.grade").doesNotExist());
+        put(token, "B43", """
+                { "status": "NICHT_BESTANDEN", "semester": "SS 2028", "attempt": 1 }""")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.grade").doesNotExist())
+                .andExpect(jsonPath("$.attempts").value(1));
     }
 
     // ---------------------------------------------------------------- Semester
