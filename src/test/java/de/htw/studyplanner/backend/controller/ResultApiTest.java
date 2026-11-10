@@ -336,6 +336,8 @@ class ResultApiTest {
     void kursBeiAnderemModulGibt400() throws Exception {
         erwarteFehler(put(neueStudierende(), "B11", """
                 { "status": "BELEGT", "courseCode": "AWE-123" }"""), "courseCode");
+        erwarteFehler(put(neueStudierende(), "B11", """
+                { "status": "BELEGT", "courseTitle": "Rhetorik" }"""), "courseTitle");
     }
 
     // ---------------------------------------------------------------- Zwei Accounts und Rollen
