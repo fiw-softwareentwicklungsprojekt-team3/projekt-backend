@@ -7,7 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  *
  * @param id            ID der angelegten Person
  * @param email         E-Mail-Adresse
- * @param rolle         Rolle, bei der Registrierung immer STUDIERENDE
+ * @param role          Rolle, bei der Registrierung immer STUDIERENDE
  * @param startsemester Startsemester wie im Request, z. B. "WS 2025"
  */
 @Schema(description = "Die angelegte Person")
@@ -19,7 +19,7 @@ public record RegisterResponse(
         String email,
 
         @Schema(description = "Rolle, bei der Registrierung immer STUDIERENDE", example = "STUDIERENDE")
-        String rolle,
+        String role,
 
         @Schema(description = "Startsemester", example = "WS 2025")
         String startsemester

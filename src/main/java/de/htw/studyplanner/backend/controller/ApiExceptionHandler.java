@@ -23,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import de.htw.studyplanner.backend.exception.ConflictException;
 import de.htw.studyplanner.backend.exception.NotFoundException;
+import de.htw.studyplanner.backend.exception.UnauthorizedException;
 import de.htw.studyplanner.backend.service.InvalidCredentialsException;
 import de.htw.studyplanner.backend.service.InvalidSemesterFormatException;
 
@@ -113,6 +114,12 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(InvalidCredentialsException.class)
     public ResponseEntity<ApiError> handleInvalidCredentials(InvalidCredentialsException ex, HttpServletRequest req) {
+        return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), req, null);
+    }
+
+    // 401: Token gültig, aber die Person existiert nicht mehr (sonst wäre das eine 500)
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiError> handleUnauthorized(UnauthorizedException ex, HttpServletRequest req) {
         return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), req, null);
     }
 

@@ -37,10 +37,13 @@ class RollenZugriffTest {
         return "Bearer " + jwtService.generateToken(person);
     }
 
-    private void assertDurchgekommen(String pfad, Rolle rolle) throws Exception {
-        int status = mockMvc.perform(get(pfad).header("Authorization", bearer(rolle)))
+    private int statusVon(String pfad, Rolle rolle) throws Exception {
+        return mockMvc.perform(get(pfad).header("Authorization", bearer(rolle)))
                 .andReturn().getResponse().getStatus();
-        assertThat(status).isNotIn(401, 403);
+    }
+
+    private void assertDurchgekommen(String pfad, Rolle rolle) throws Exception {
+        assertThat(statusVon(pfad, rolle)).isNotIn(401, 403);
     }
 
     @Test
@@ -80,10 +83,16 @@ class RollenZugriffTest {
     }
 
     @Test
-    void authMeBrauchtTokenAberKeineBestimmteRolle() throws Exception {
-        mockMvc.perform(get("/api/auth/me"))
+    void meIstKeinerRolleVorbehaltenAberBrauchtEinToken() throws Exception {
+        // Ohne Token: 401.
+        mockMvc.perform(get("/api/me"))
                 .andExpect(status().isUnauthorized());
-        assertDurchgekommen("/api/auth/me", Rolle.STUDIERENDE);
-        assertDurchgekommen("/api/auth/me", Rolle.PROFESSOR_IN);
+
+        // Mit Token: nie 403, egal welche Rolle – /api/me ist nicht rollenbeschränkt.
+        // Hier wird absichtlich nicht auf 200 geprüft: Die Person aus bearer(...) steht
+        // nicht in der Datenbank, dafür liefert /api/me korrekt 401 (siehe MeService).
+        // Den Inhalt der Antwort prüft MeApiTest.
+        assertThat(statusVon("/api/me", Rolle.STUDIERENDE)).isNotEqualTo(403);
+        assertThat(statusVon("/api/me", Rolle.PROFESSOR_IN)).isNotEqualTo(403);
     }
 }
