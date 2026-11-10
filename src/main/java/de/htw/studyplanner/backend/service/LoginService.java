@@ -31,7 +31,7 @@ public class LoginService {
         this.jwtService = jwtService;
     }
 
-     /**
+    /**
      * Prüft die Zugangsdaten und stellt ein Token aus.
      *
      * <p>Die E-Mail wird ohne Unterscheidung von Groß- und Kleinschreibung gesucht.
