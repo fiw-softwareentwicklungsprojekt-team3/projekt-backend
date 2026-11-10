@@ -10,6 +10,12 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
+/**
+ * Schreibt eine Fehlerantwort im einheitlichen Format ({@link ApiError}) direkt in die Antwort.
+ *
+ * <p>Wird dort gebraucht, wo Filter und Handler von Spring Security antworten. Dort greift
+ * der normale {@code ApiExceptionHandler} nicht.
+ */
 @Component
 public class ApiErrorWriter {
 

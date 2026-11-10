@@ -8,6 +8,9 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
+/**
+ * Wird aufgerufen, wenn eine Anfrage ohne ausreichende Berechtigung kommt.
+ */
 @Component
 public class RestAccessDeniedHandler implements AccessDeniedHandler {
 
