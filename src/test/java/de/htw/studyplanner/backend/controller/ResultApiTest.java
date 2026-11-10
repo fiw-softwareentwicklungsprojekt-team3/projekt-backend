@@ -135,6 +135,8 @@ class ResultApiTest {
 
         mockMvc.perform(delete("/api/results/B11").header("Authorization", token))
                 .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/api/results/B11").header("Authorization", token))
+                .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/results").header("Authorization", token))
                 .andExpect(jsonPath("$.length()").value(0));
