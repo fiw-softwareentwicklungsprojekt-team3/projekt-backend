@@ -99,9 +99,12 @@ public class PlanService {
      *   <li>Modul darf noch nicht im Plan stehen (sonst 409 mit Hinweis aufs Verschieben)</li>
      *   <li>Semester darf nicht vor dem Startsemester liegen (E31)</li>
      *   <li>Turnus des Moduls muss zur Art des Plansemesters passen (E32)</li>
-     *   <li>Bei {@code mit_auswahl = false} dürfen {@code offerCode}, {@code courseCode}
-     *       und {@code courseTitle} nicht gesetzt sein</li>
-     *   <li>Ein angegebenes {@code offerCode} muss in {@code wahlangebot} existieren</li>
+     *   <li>Bei {@code mit_auswahl = false} (feste Pflichtmodule wie B11, B33, B34, deren
+     *       Titel bereits in {@code modul.bezeichnung} steht) müssen {@code offerCode},
+     *       {@code courseCode} und {@code courseTitle} leer ({@code null}) bleiben (E10)</li>
+     *   <li>Nur bei {@code mit_auswahl = true} (B16, B26, B41, B54, B63, B64) dürfen
+     *       {@code offerCode}, {@code courseCode} und {@code courseTitle} optional angegeben
+     *       werden; ein angegebenes {@code offerCode} muss in {@code wahlangebot} existieren</li>
      * </ul>
      */
     private Wahlangebot pruefeEintrag(Studierende studierende, Modul modul,
@@ -127,6 +130,11 @@ public class PlanService {
                     modul.getCode() + " wird nur im Sommersemester angeboten, geplant ist " + gelesen.label() + ".");
         }
 
+        // Auswahl-Prüfung (E10):
+        // Normale Pflichtmodule (z. B. B11, B33, B34) haben mit_auswahl = false. Ihr Modultitel
+        // steht bereits fest in modul.bezeichnung – offerCode, courseCode und courseTitle sind
+        // nur für die konkrete Kurswahl innerhalb der 6 Auswahl-Module (B16, B26, B41, B54, B63, B64)
+        // gedacht und müssen bei allen anderen Modulen null sein.
         if (!modul.isMitAuswahl()) {
             if (!leer(request.offerCode())) {
                 throw new FieldValidationException("offerCode",
@@ -143,6 +151,9 @@ public class PlanService {
             return null;
         }
 
+        // Bei Auswahl-Modulen (mit_auswahl = true: B16, B26, B41, B54, B63, B64) sind
+        // offerCode, courseCode und courseTitle beim Planen optional. Wird ein offerCode
+        // übergeben (z. B. WP1..WP15 oder EN_B2.1), muss er in wahlangebot existieren.
         if (!leer(request.offerCode())) {
             return wahlangebotRepository.findById(request.offerCode().trim())
                     .orElseThrow(() -> new FieldValidationException("offerCode",
