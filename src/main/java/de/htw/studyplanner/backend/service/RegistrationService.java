@@ -57,10 +57,12 @@ public class RegistrationService {
      */
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
+        // Feldname "startsemester", damit der Fehler im Formular am richtigen Feld steht
+        Semester parsed = semesterService.parse(request.startsemester(), "startsemester");
+
         Nutzende nutzende = kontoService.legeKontoAn(
                 request.email(), request.password(), Rolle.STUDIERENDE);
 
-        Semester parsed = semesterService.parse(request.startsemester());
         Semester semester = semesterService.findenOderNeuAnlegen(parsed.getJahr(), parsed.getArt());
 
         studierendeRepository.save(new Studierende(nutzende, semester));

@@ -14,6 +14,6 @@ public record ProfessorRegisterResponse(
         String email,
 
         @Schema(description = "Rolle, hier immer PROFESSOR_IN", example = "PROFESSOR_IN")
-        String rolle
+        String role
 ) {
 }

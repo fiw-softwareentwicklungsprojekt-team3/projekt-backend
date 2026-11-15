@@ -1,5 +1,7 @@
 package de.htw.studyplanner.backend.service;
 
+import java.util.Locale;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,7 +13,8 @@ import de.htw.studyplanner.backend.repository.NutzendeRepository;
 
 /**
  * Gemeinsame Logik für alle Registrierungen: E-Mail prüfen, Passwort hashen,
- * Konto in {@code nutzende} anlegen.
+ * Konto in {@code nutzende} anlegen. E-Mails werden immer in Kleinbuchstaben
+ * gespeichert und verglichen, wie beim Login.
  *
  * <p>Wird von {@link RegistrationService} (Studierende, E2.2) und
  * {@link ProfessorRegistrationService} (Professor:innen, E2.5) genutzt, damit die
@@ -37,7 +40,7 @@ public class KontoService {
      * @throws ConflictException wenn es die E-Mail schon gibt (führt zu Status 409)
      */
     public void pruefeEmailFrei(String email) {
-        if (nutzendeRepository.findByEmail(email).isPresent()) {
+        if (nutzendeRepository.findByEmail(normalisiere(email)).isPresent()) {
             throw new ConflictException(EMAIL_VERGEBEN);
         }
     }
@@ -50,8 +53,20 @@ public class KontoService {
      */
     @Transactional
     public Nutzende legeKontoAn(String email, String password, Rolle rolle) {
-        pruefeEmailFrei(email);
+        String normalisiert = normalisiere(email);
+        pruefeEmailFrei(normalisiert);
         String passwortHash = passwordEncoder.encode(password);
-        return nutzendeRepository.save(new Nutzende(email, passwortHash, rolle));
+        return nutzendeRepository.save(new Nutzende(normalisiert, passwortHash, rolle));
+    }
+
+    /**
+     * Macht aus einer E-Mail die gespeicherte Form: Kleinbuchstaben.
+     * {@code Max@HTW-Berlin.de} und {@code max@htw-berlin.de} sind damit dieselbe Adresse.
+     *
+     * @param email die E-Mail aus dem Request
+     * @return die E-Mail in Kleinbuchstaben
+     */
+    static String normalisiere(String email) {
+        return email.toLowerCase(Locale.ROOT);
     }
 }

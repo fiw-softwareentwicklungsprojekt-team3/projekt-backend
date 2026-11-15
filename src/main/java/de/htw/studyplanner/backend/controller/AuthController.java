@@ -117,7 +117,7 @@ public class AuthController {
                             {
                               "id": 42,
                               "email": "professorin@htw-berlin.de",
-                              "rolle": "PROFESSOR_IN"
+                              "role": "PROFESSOR_IN"
                             }""")))
     @ApiResponse(responseCode = "400", description = """
             Eingabe ungültig (E-Mail, Passwort, Code fehlt) oder der Einladungscode ist unbekannt,

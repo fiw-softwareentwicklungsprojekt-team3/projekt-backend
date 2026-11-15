@@ -77,7 +77,7 @@ class ProfessorRegistrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNumber())
                 .andExpect(jsonPath("$.email").value("prof.erfolg@htw-berlin.de"))
-                .andExpect(jsonPath("$.rolle").value("PROFESSOR_IN"))
+                .andExpect(jsonPath("$.role").value("PROFESSOR_IN"))
                 .andExpect(jsonPath("$.password").doesNotExist())
                 .andExpect(jsonPath("$.passwortHash").doesNotExist());
 
@@ -110,7 +110,7 @@ class ProfessorRegistrationTest {
 
         registriereProfessorIn("prof.klein@htw-berlin.de", "geheimesPasswort", "  " + code.toLowerCase() + " ")
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.rolle").value("PROFESSOR_IN"));
+                .andExpect(jsonPath("$.role").value("PROFESSOR_IN"));
     }
 
     @Test
@@ -215,10 +215,10 @@ class ProfessorRegistrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"email": "trick@example.com", "password": "geheimesPasswort",
-                                 "startsemester": "WS 2025", "code": "%s", "rolle": "PROFESSOR_IN"}
+                                 "startsemester": "WS 2025", "code": "%s", "role": "PROFESSOR_IN"}
                                 """.formatted(code)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.rolle").value("STUDIERENDE"));
+                .andExpect(jsonPath("$.role").value("STUDIERENDE"));
 
         assertThat(nutzendeRepository.findByEmail("trick@example.com").orElseThrow().getRolle())
                 .isEqualTo(Rolle.STUDIERENDE);
