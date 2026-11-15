@@ -76,7 +76,7 @@ class ResultApiTest {
     private String neueStudierende() {
         Nutzende person = new TransactionTemplate(transactionManager).execute(status -> {
             Nutzende n = nutzendeRepository.save(new Nutzende(
-                    "results-" + UUID.randomUUID() + "@example.com", "hash-egal", Rolle.STUDIERENDE));
+                    "results-" + UUID.randomUUID() + "@student.htw-berlin.de", "hash-egal", Rolle.STUDIERENDE));
             Semester ws2026 = semesterRepository.findByJahrAndArt(2026, SemesterArt.WS)
                     .orElseGet(() -> semesterRepository.save(new Semester(2026, SemesterArt.WS)));
             studierendeRepository.save(new Studierende(n, ws2026));
@@ -376,7 +376,7 @@ class ResultApiTest {
     @Test
     void professorinBekommt403() throws Exception {
         Nutzende prof = nutzendeRepository.save(new Nutzende(
-                "results-prof-" + UUID.randomUUID() + "@example.com", "hash-egal", Rolle.PROFESSOR_IN));
+                "results-prof-" + UUID.randomUUID() + "@htw-berlin.de", "hash-egal", Rolle.PROFESSOR_IN));
         String token = "Bearer " + jwtService.generateToken(prof);
 
         mockMvc.perform(get("/api/results").header("Authorization", token))

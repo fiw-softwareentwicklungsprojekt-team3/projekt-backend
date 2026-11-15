@@ -63,7 +63,7 @@ class PlanEintragRepositoryTest {
         // Semester 2021-2026 sind schon durch V3 in der Datenbank
         ws2025 = semesterRepository.findByJahrAndArt(2025, SemesterArt.WS).orElseThrow();
         Nutzende nutzende = nutzendeRepository.saveAndFlush(
-                new Nutzende("plan.test@htw-berlin.de", "hash", Rolle.STUDIERENDE));
+                new Nutzende("plan.test@student.htw-berlin.de", "hash", Rolle.STUDIERENDE));
         studierende = studierendeRepository.saveAndFlush(new Studierende(nutzende, ws2025));
     }
 
@@ -93,7 +93,7 @@ class PlanEintragRepositoryTest {
         planEintragRepository.save(new PlanEintrag(studierende, b12, ws2025));
 
         Nutzende andere = nutzendeRepository.save(
-                new Nutzende("andere.person@htw-berlin.de", "hash", Rolle.STUDIERENDE));
+                new Nutzende("andere.person@student.htw-berlin.de", "hash", Rolle.STUDIERENDE));
         Studierende andereStudierende = studierendeRepository.save(new Studierende(andere, ws2025));
         planEintragRepository.save(new PlanEintrag(andereStudierende, b11, ws2025));
         em.flush();

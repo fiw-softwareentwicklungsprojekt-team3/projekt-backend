@@ -54,9 +54,11 @@ public class AuthController {
 
     /**
      * Registriert eine neue Person mit der Rolle STUDIERENDE.
-     * Antwortet mit 400 bei ungültigen Eingaben und mit 409, wenn die E-Mail schon vergeben ist.
+     * Antwortet mit 400 bei ungültigen Eingaben (auch wenn die E-Mail keine
+     * {@code @student.htw-berlin.de}-Adresse ist) und mit 409, wenn die E-Mail schon vergeben ist.
      *
-     * @param request E-Mail, Passwort (mindestens 8 Zeichen) und Startsemester im Format "WS JJJJ"
+     * @param request HTW-E-Mail der Studierenden, Passwort (mindestens 8 Zeichen) und Startsemester
+     *                im Format "WS JJJJ"
      * @return die angelegte Person ohne Passwort
      */
     @PostMapping("/register")
@@ -64,10 +66,11 @@ public class AuthController {
     @Operation(summary = "Neue Studierende registrieren",
             description = """
                     Legt eine Person mit der Rolle STUDIERENDE an. Die Rolle setzt immer das Backend.
+                    Erlaubt sind nur E-Mail-Adressen, die auf `@student.htw-berlin.de` enden.
                     Das Studium beginnt immer im Wintersemester, deshalb ist nur `WS JJJJ` erlaubt.
                     Gibt es das Startsemester noch nicht, wird es angelegt.""")
     @ApiResponse(responseCode = "201", description = "Person wurde angelegt")
-    @ApiResponse(responseCode = "400", description = "Eingabe ungültig, z. B. E-Mail falsch oder Passwort zu kurz. Alle fehlerhaften Felder werden in errors gelistet.")
+    @ApiResponse(responseCode = "400", description = "Eingabe ungültig, z. B. E-Mail falsch, keine @student.htw-berlin.de-Adresse oder Passwort zu kurz. Alle fehlerhaften Felder werden in errors gelistet.")
     @ApiResponse(responseCode = "409", description = "Die E-Mail ist bereits vergeben")
     public RegisterResponse register(
             @Valid @RequestBody RegisterRequest request) {
@@ -144,14 +147,19 @@ public class AuthController {
 
     /**
      * Meldet eine Person an und liefert ein JWT.
-     * Antwortet mit 401, wenn E-Mail oder Passwort falsch sind.
+     * Antwortet mit 400, wenn die E-Mail keine HTW-Adresse ist, und mit 401, wenn E-Mail
+     * oder Passwort falsch sind.
      *
      * @param request E-Mail und Passwort
      * @return Token, Gültigkeit in Sekunden und Rolle
      */
     @PostMapping("/login")
-    @Operation(summary = "Anmelden", description = "Prüft E-Mail und Passwort und liefert ein JWT.")
+    @Operation(summary = "Anmelden",
+            description = """
+                    Prüft E-Mail und Passwort und liefert ein JWT. Erlaubt sind nur E-Mail-Adressen,
+                    die auf `@student.htw-berlin.de` (Studierende) oder `@htw-berlin.de` (Lehrende) enden.""")
     @ApiResponse(responseCode = "200", description = "Login erfolgreich")
+    @ApiResponse(responseCode = "400", description = "Eingabe ungültig, z. B. E-Mail leer, falsch geschrieben oder keine HTW-Adresse. Die fehlerhaften Felder stehen in errors.")
     @ApiResponse(responseCode = "401", description = "E-Mail oder Passwort falsch")
     public LoginResponse login(
             @Valid @RequestBody LoginRequest request) {

@@ -1,5 +1,6 @@
 package de.htw.studyplanner.backend.controller;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -75,6 +76,26 @@ class OpenApiDocsTest {
         // ApiExceptionHandler dürfen nicht an jedem Endpunkt auftauchen.
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(jsonPath("$.paths['/api/health'].get.responses['409']").doesNotExist());
+    }
+
+    @Test
+    void registrierungUndLoginBeschreibenDieHtwEmailRegel() throws Exception {
+        // US-28: Statuscodes, Beschreibung und Beispielwerte nennen die erlaubten HTW-Domains.
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/auth/login'].post.responses['200']").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/login'].post.responses['400']").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/login'].post.responses['401']").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/register'].post.description")
+                        .value(containsString("@student.htw-berlin.de")))
+                .andExpect(jsonPath("$.paths['/api/auth/login'].post.description")
+                        .value(containsString("@student.htw-berlin.de")))
+                .andExpect(jsonPath("$.paths['/api/auth/login'].post.description")
+                        .value(containsString("`@htw-berlin.de`")))
+                .andExpect(jsonPath("$.components.schemas.RegisterRequest.properties.email.example")
+                        .value("studentin@student.htw-berlin.de"))
+                .andExpect(jsonPath("$.components.schemas.RegisterResponse.properties.email.example")
+                        .value("studentin@student.htw-berlin.de"));
     }
 
     @Test

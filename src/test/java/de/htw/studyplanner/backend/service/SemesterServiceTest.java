@@ -275,7 +275,7 @@ class SemesterServiceTest {
         StudierendeRepository studierendeRepo = mock(StudierendeRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
 
-        when(nutzendeRepo.findByEmail("neu@example.com")).thenReturn(Optional.empty());
+        when(nutzendeRepo.findByEmail("neu@student.htw-berlin.de")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("geheimesPasswort")).thenReturn("hash");
         when(nutzendeRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(semesterRepository.findByJahrAndArt(2026, SemesterArt.WS))
@@ -287,7 +287,7 @@ class SemesterServiceTest {
 
         RegisterResponse response = registrationService.register(
                 new RegisterRequest(
-                        "neu@example.com", "geheimesPasswort", "WS 2026"));
+                        "neu@student.htw-berlin.de", "geheimesPasswort", "WS 2026"));
 
         assertThat(response.startsemester()).isEqualTo("WS 2026");
         verify(semesterRepository).findByJahrAndArt(2026, SemesterArt.WS);

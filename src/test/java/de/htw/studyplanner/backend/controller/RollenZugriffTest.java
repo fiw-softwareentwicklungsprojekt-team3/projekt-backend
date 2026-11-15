@@ -32,7 +32,7 @@ class RollenZugriffTest {
     private JwtService jwtService;
 
     private String bearer(Rolle rolle) {
-        Nutzende person = new Nutzende("rollen-test@example.com", "unused", rolle);
+        Nutzende person = new Nutzende("rollen-test@student.htw-berlin.de", "unused", rolle);
         person.setNutzendeId(1);
         return "Bearer " + jwtService.generateToken(person);
     }
