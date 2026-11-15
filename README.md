@@ -59,6 +59,7 @@ docker compose up -d
 ```
 
 Details, HTW-Server und Regeln für Migrationen: [docs/datenbank.md](docs/datenbank.md)
+
 Einladungscodes für Professor:innen anlegen: [docs/einladungscodes.md](docs/einladungscodes.md)
 
 ## Testabdeckung

@@ -1,7 +1,7 @@
 # Einladungscodes für Professor:innen (E2.5)
 
 Professor:innen registrieren sich über `POST /api/auth/register/professor` mit
-E-Mail, Passwort und einem **Einladungscode**. Ohne Code gibt es nur
+ihrer `@htw-berlin.de`-Adresse, Passwort und einem **Einladungscode**. Ohne Code gibt es nur
 `POST /api/auth/register`, und das legt immer ein Konto mit der Rolle
 `STUDIERENDE` an.
 

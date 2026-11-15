@@ -179,12 +179,8 @@ class ProfessorRegistrationTest {
 
     @Test
     void vergebeneEmailLiefert409UndCodeWirdNichtVerbraucht() throws Exception {
-        mockMvc.perform(post("/api/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"email": "vergeben.prof@htw-berlin.de", "password": "geheimesPasswort",
-                                 "startsemester": "WS 2025"}
-                                """))
+        // Die E-Mail gehört schon einer Professor:in (nur @htw-berlin.de ist erlaubt).
+        registriereProfessorIn("vergeben.prof@htw-berlin.de", "geheimesPasswort", neuerCode())
                 .andExpect(status().isCreated());
 
         String code = neuerCode();
@@ -192,9 +188,25 @@ class ProfessorRegistrationTest {
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Diese E-Mail-Adresse ist bereits vergeben."));
 
+        // Der zweite Code ist nicht verbraucht.
         assertThat(codeZeile(code).get("eingeloest_von")).isNull();
-        assertThat(nutzendeRepository.findByEmail("vergeben.prof@htw-berlin.de").orElseThrow().getRolle())
-                .isEqualTo(Rolle.STUDIERENDE);
+    }
+
+    @Test
+    void emailOhneHtwLehrendenDomainLiefert400UndCodeBleibtGueltig() throws Exception {
+        // Nur @htw-berlin.de, sonst ist später kein Login möglich (LoginRequest erlaubt nur HTW-Adressen).
+        String code = neuerCode();
+
+        registriereProfessorIn("prof@gmail.com", "geheimesPasswort", code)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("email"))
+                .andExpect(jsonPath("$.errors[0].message").value("email muss auf @htw-berlin.de enden"));
+
+        registriereProfessorIn("prof@student.htw-berlin.de", "geheimesPasswort", code)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("email"));
+
+        assertThat(codeZeile(code).get("eingeloest_von")).isNull();
     }
 
     @Test
@@ -214,13 +226,13 @@ class ProfessorRegistrationTest {
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email": "trick@example.com", "password": "geheimesPasswort",
+                                {"email": "trick@student.htw-berlin.de", "password": "geheimesPasswort",
                                  "startsemester": "WS 2025", "code": "%s", "role": "PROFESSOR_IN"}
                                 """.formatted(code)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.role").value("STUDIERENDE"));
 
-        assertThat(nutzendeRepository.findByEmail("trick@example.com").orElseThrow().getRolle())
+        assertThat(nutzendeRepository.findByEmail("trick@student.htw-berlin.de").orElseThrow().getRolle())
                 .isEqualTo(Rolle.STUDIERENDE);
         assertThat(codeZeile(code).get("eingeloest_von")).isNull();
     }

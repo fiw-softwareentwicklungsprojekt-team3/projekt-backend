@@ -78,6 +78,7 @@ public class AuthController {
         return registrationService.register(request);
     }
 
+
     /**
      * Registriert eine Professor:in mit Einladungscode.
      * Antwortet mit 400 bei ungültigen Eingaben oder ungültigem Code und mit 409,
@@ -94,7 +95,9 @@ public class AuthController {
                     den das Team ausgibt (siehe Wiki „Einladungscodes anlegen“). Jeder Code kann genau
                     einmal eingelöst werden.
 
-                    E-Mail- und Passwort-Regeln sind dieselben wie bei `POST /api/auth/register`.
+                    Erlaubt sind nur E-Mail-Adressen, die auf `@htw-berlin.de` enden, denn nur damit
+                    ist später der Login möglich. Passwort-Regeln sind dieselben wie bei
+                    `POST /api/auth/register`.
                     Ist die E-Mail schon vergeben, kommt 409, egal welcher Code mitgeschickt wird;
                     der Code wird dann nicht verbraucht.
 
@@ -123,7 +126,7 @@ public class AuthController {
                               "role": "PROFESSOR_IN"
                             }""")))
     @ApiResponse(responseCode = "400", description = """
-            Eingabe ungültig (E-Mail, Passwort, Code fehlt) oder der Einladungscode ist unbekannt,
+            Eingabe ungültig (E-Mail, keine @htw-berlin.de-Adresse, Passwort, Code fehlt) oder der Einladungscode ist unbekannt,
             abgelaufen oder schon eingelöst. Beim Code lautet die Meldung immer
             „Der Einladungscode ist ungültig.“""",
             content = @Content(mediaType = "application/json",

@@ -57,7 +57,10 @@ public class RegistrationService {
      */
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-        // Feldname "startsemester", damit der Fehler im Formular am richtigen Feld steht
+        // Die E-Mail muss eindeutig sein, sonst Konflikt (409). Klein geschrieben wird sie im KontoService.
+        kontoService.pruefeEmailFrei(request.email());
+
+        // Feldname wie im Request, damit errors[].field "startsemester" heißt (wie beim @Pattern-Fehler).
         Semester parsed = semesterService.parse(request.startsemester(), "startsemester");
 
         Nutzende nutzende = kontoService.legeKontoAn(

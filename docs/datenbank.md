@@ -103,5 +103,14 @@ Zeile überschreibt, steht in `leistung.status` immer nur der aktuelle Stand. Ei
 Durchfallquote je Modul lässt sich deshalb nicht aus `status` ablesen, sondern
 nur über `anzahl_versuche > 1`.
 
-## Einladungscodes 
-(V4) src/main/resources/db/migration/V4__einladungscode.sql
+## Einladungscodes (V4)
+
+Die Tabelle `einladungscode` (Migration `V4__einladungscode.sql`) enthält die Codes,
+mit denen sich Professor:innen registrieren. In der Migration stehen bewusst keine
+Codes, weil das Repo öffentlich ist. Anlegen per Profil:
+
+```
+./mvnw spring-boot:run -Dspring-boot.run.profiles=einladungscode
+```
+
+Alles Weitere: [einladungscodes.md](einladungscodes.md)
