@@ -10,9 +10,12 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import de.htw.studyplanner.backend.dto.LoginRequest;
 import de.htw.studyplanner.backend.dto.LoginResponse;
+import de.htw.studyplanner.backend.dto.ProfessorRegisterRequest;
+import de.htw.studyplanner.backend.dto.ProfessorRegisterResponse;
 import de.htw.studyplanner.backend.dto.RegisterRequest;
 import de.htw.studyplanner.backend.dto.RegisterResponse;
 import de.htw.studyplanner.backend.service.LoginService;
+import de.htw.studyplanner.backend.service.ProfessorRegistrationService;
 import de.htw.studyplanner.backend.service.RegistrationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -22,8 +25,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
- * Registrierung neuer Studierender.
- * Der Controller leitet nur weiter, die Logik steht in {@link RegistrationService}.
+ * Registrierung (Studierende und Professor:innen) und Login.
+ * Der Controller leitet nur weiter, die Logik steht in den Services.
  */
 @RestController
 @RequestMapping("/api/auth")
@@ -31,16 +34,21 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class AuthController {
 
     private final RegistrationService registrationService;
+    private final ProfessorRegistrationService professorRegistrationService;
     private final LoginService loginService;
 
     /**
      * Erstellt den Controller.
      *
-     * @param registrationService Service, der neue Studierende anlegt
-     * @param loginService        Service, der den Login prüft und das Token erzeugt
+     * @param registrationService          Service, der neue Studierende anlegt
+     * @param professorRegistrationService Service, der Professor:innen mit Einladungscode anlegt
+     * @param loginService                 Service, der den Login prüft und das Token erzeugt
      */
-    public AuthController(RegistrationService registrationService, LoginService loginService) {
+    public AuthController(RegistrationService registrationService,
+                          ProfessorRegistrationService professorRegistrationService,
+                          LoginService loginService) {
         this.registrationService = registrationService;
+        this.professorRegistrationService = professorRegistrationService;
         this.loginService = loginService;
     }
 
@@ -65,6 +73,72 @@ public class AuthController {
             @Valid @RequestBody RegisterRequest request) {
 
         return registrationService.register(request);
+    }
+
+    /**
+     * Registriert eine Professor:in mit Einladungscode.
+     * Antwortet mit 400 bei ungültigen Eingaben oder ungültigem Code und mit 409,
+     * wenn die E-Mail schon vergeben ist.
+     *
+     * @param request E-Mail, Passwort (mindestens 8 Zeichen) und Einladungscode
+     * @return das angelegte Konto ohne Passwort
+     */
+    @PostMapping("/register/professor")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Professor:in mit Einladungscode registrieren",
+            description = """
+                    Legt ein Konto mit der Rolle PROFESSOR_IN an. Dafür ist ein Einladungscode nötig,
+                    den das Team ausgibt (siehe Wiki „Einladungscodes anlegen“). Jeder Code kann genau
+                    einmal eingelöst werden.
+
+                    E-Mail- und Passwort-Regeln sind dieselben wie bei `POST /api/auth/register`.
+                    Ist die E-Mail schon vergeben, kommt 409, egal welcher Code mitgeschickt wird;
+                    der Code wird dann nicht verbraucht.
+
+                    Ist der Code unbekannt, abgelaufen oder schon eingelöst, kommt immer dieselbe
+                    Meldung, damit man gültige Codes nicht erraten kann.""",
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ProfessorRegisterRequest.class),
+                            examples = @ExampleObject(
+                                    name = "Registrierung mit Code",
+                                    value = """
+                                            {
+                                              "email": "professorin@htw-berlin.de",
+                                              "password": "geheimesPasswort",
+                                              "code": "K7MPX4QRT9WZ"
+                                            }"""))))
+    @ApiResponse(responseCode = "201", description = "Konto mit Rolle PROFESSOR_IN wurde angelegt",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ProfessorRegisterResponse.class),
+                    examples = @ExampleObject(value = """
+                            {
+                              "id": 42,
+                              "email": "professorin@htw-berlin.de",
+                              "rolle": "PROFESSOR_IN"
+                            }""")))
+    @ApiResponse(responseCode = "400", description = """
+            Eingabe ungültig (E-Mail, Passwort, Code fehlt) oder der Einladungscode ist unbekannt,
+            abgelaufen oder schon eingelöst. Beim Code lautet die Meldung immer
+            „Der Einladungscode ist ungültig.“""",
+            content = @Content(mediaType = "application/json",
+                    examples = @ExampleObject(name = "Code ungültig", value = """
+                            {
+                              "status": 400,
+                              "error": "Bad Request",
+                              "message": "Der Einladungscode ist ungültig.",
+                              "path": "/api/auth/register/professor",
+                              "errors": [
+                                { "field": "code", "message": "Der Einladungscode ist ungültig." }
+                              ]
+                            }""")))
+    @ApiResponse(responseCode = "409", description = "Die E-Mail ist bereits vergeben", content = @Content)
+    public ProfessorRegisterResponse registerProfessor(
+            @Valid @RequestBody ProfessorRegisterRequest request) {
+
+        return professorRegistrationService.register(request);
     }
 
 

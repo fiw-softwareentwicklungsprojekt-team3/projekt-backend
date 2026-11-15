@@ -97,4 +97,26 @@ class FlywayMigrationTest {
                         + "VALUES (1, 'TST1', 'BESTANDEN', 2.5)"))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
+
+    @Test
+    void einladungscodeTabelleAusV4IstAngelegt() {
+        List<String> spalten = jdbc.queryForList(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'einladungscode'",
+                String.class);
+
+        assertThat(spalten).containsExactlyInAnyOrder(
+                "code", "gueltig_bis", "eingeloest_von", "eingeloest_am");
+    }
+
+    @Test
+    void einloesungBrauchtNutzendeUndDatumZusammen() {
+        // nur eingeloest_von ohne eingeloest_am ist nicht erlaubt
+        Integer id = jdbc.queryForObject("INSERT INTO nutzende (email, passwort_hash, rolle) "
+                + "VALUES ('flyway.prof@htw-berlin.de', 'hash', 'PROFESSOR_IN') RETURNING nutzende_id",
+                Integer.class);
+        assertThatThrownBy(() -> jdbc.update(
+                "INSERT INTO einladungscode (code, gueltig_bis, eingeloest_von) "
+                        + "VALUES ('TESTCODE0001', now() + interval '1 day', ?)", id))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
 }

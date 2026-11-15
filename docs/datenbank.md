@@ -102,3 +102,6 @@ Turnus (WS/SS) wird beachtet.
 Zeile überschreibt, steht in `leistung.status` immer nur der aktuelle Stand. Eine
 Durchfallquote je Modul lässt sich deshalb nicht aus `status` ablesen, sondern
 nur über `anzahl_versuche > 1`.
+
+## Einladungscodes 
+(V4) src/main/resources/db/migration/V4__einladungscode.sql

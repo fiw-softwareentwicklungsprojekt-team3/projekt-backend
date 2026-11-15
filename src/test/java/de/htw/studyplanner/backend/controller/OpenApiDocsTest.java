@@ -32,6 +32,9 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.info.title").value("Studyplanner API"))
                 .andExpect(jsonPath("$.paths['/api/health'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/auth/register'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/register/professor'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/register/professor'].post.requestBody"
+                        + ".content['application/json'].examples").exists())
                 .andExpect(jsonPath("$.paths['/api/modules'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/modules/{code}'].get").exists());
     }
@@ -42,6 +45,9 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/auth/register'].post.responses['201']").exists())
                 .andExpect(jsonPath("$.paths['/api/auth/register'].post.responses['400']").exists())
                 .andExpect(jsonPath("$.paths['/api/auth/register'].post.responses['409']").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/register/professor'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/register/professor'].post.responses['400']").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/register/professor'].post.responses['409']").exists())
                 .andExpect(jsonPath("$.paths['/api/modules'].get.responses['200']").exists())
                 .andExpect(jsonPath("$.paths['/api/modules'].get.responses['400']").exists())
                 .andExpect(jsonPath("$.paths['/api/modules/{code}'].get.responses['200']").exists())

@@ -25,11 +25,20 @@ import de.htw.studyplanner.backend.exception.ConflictException;
 import de.htw.studyplanner.backend.exception.NotFoundException;
 import de.htw.studyplanner.backend.service.InvalidCredentialsException;
 import de.htw.studyplanner.backend.service.InvalidSemesterFormatException;
+import de.htw.studyplanner.backend.exception.UngueltigerEinladungscodeException;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+
+        // 400: Einladungscode unbekannt, abgelaufen oder eingelöst, immer dieselbe Meldung (E2.5)
+    @ExceptionHandler(UngueltigerEinladungscodeException.class)
+    public ResponseEntity<ApiError> handleUngueltigerEinladungscode(UngueltigerEinladungscodeException ex,
+                                                                     HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, UngueltigerEinladungscodeException.MELDUNG, req,
+                List.of(new ApiFieldError("code", UngueltigerEinladungscodeException.MELDUNG)));
+    }
 
     // 400: @Valid, alle Feldfehler kommen in "errors"
     @ExceptionHandler(MethodArgumentNotValidException.class)
