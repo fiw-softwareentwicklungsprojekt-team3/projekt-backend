@@ -19,7 +19,7 @@ public record MeResponse(
         @Schema(description = "ID der angemeldeten Person", example = "12")
         Integer id,
 
-        @Schema(description = "E-Mail-Adresse", example = "studentin@example.com")
+        @Schema(description = "E-Mail-Adresse", example = "studentin@student.htw-berlin.de")
         String email,
 
         @Schema(description = "Rolle der Person", example = "STUDIERENDE")

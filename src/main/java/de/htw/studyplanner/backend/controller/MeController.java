@@ -64,7 +64,7 @@ public class MeController {
                     examples = @ExampleObject(name = "Studierende", value = """
                             {
                               "id": 12,
-                              "email": "studentin@example.com",
+                              "email": "studentin@student.htw-berlin.de",
                               "role": "STUDIERENDE",
                               "startSemester": "WS 2026"
                             }""")))

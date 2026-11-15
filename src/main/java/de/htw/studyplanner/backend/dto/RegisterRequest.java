@@ -6,18 +6,23 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import de.htw.studyplanner.backend.validation.HtwEmail;
+
 /**
  * Daten für die Registrierung ({@code POST /api/auth/register}).
  *
- * @param email         E-Mail-Adresse, muss eindeutig sein
+ * @param email         HTW-Adresse der Studierenden (@student.htw-berlin.de), muss eindeutig sein
  * @param password      Passwort im Klartext, mindestens 8 Zeichen; gespeichert wird nur der Hash
  * @param startsemester Startsemester im Format "WS JJJJ", z. B. "WS 2025"
  */
 @Schema(description = "Daten für die Registrierung")
 public record RegisterRequest(
-        @Schema(description = "E-Mail-Adresse, muss eindeutig sein", example = "studentin@example.com")
+        @Schema(description = "E-Mail-Adresse, muss eindeutig sein und auf @student.htw-berlin.de enden",
+                example = "studentin@student.htw-berlin.de")
         @NotBlank(message = "email darf nicht leer sein")
         @Email(message = "email ist ungültig")
+        @HtwEmail(domains = HtwEmail.STUDIERENDE,
+                message = "email muss auf @student.htw-berlin.de enden")
         String email,
 
         @Schema(description = "Passwort, mindestens 8 Zeichen", example = "geheimesPasswort", minLength = 8)

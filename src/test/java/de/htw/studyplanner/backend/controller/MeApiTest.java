@@ -82,19 +82,19 @@ class MeApiTest {
 
     @Test
     void studierendeBekommenIdEmailRolleUndStartsemester() throws Exception {
-        Nutzende person = studierendeAnlegen("me-studentin@example.com", "hash-egal");
+        Nutzende person = studierendeAnlegen("me-studentin@student.htw-berlin.de", "hash-egal");
 
         mockMvc.perform(get("/api/me").header("Authorization", bearer(person)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(person.getNutzendeId()))
-                .andExpect(jsonPath("$.email").value("me-studentin@example.com"))
+                .andExpect(jsonPath("$.email").value("me-studentin@student.htw-berlin.de"))
                 .andExpect(jsonPath("$.role").value("STUDIERENDE"))
                 .andExpect(jsonPath("$.startSemester").value("WS 2026"));
     }
 
     @Test
     void antwortEnthaeltNiemalsDenPasswortHash() throws Exception {
-        Nutzende person = studierendeAnlegen("me-kein-hash@example.com", "streng-geheim");
+        Nutzende person = studierendeAnlegen("me-kein-hash@student.htw-berlin.de", "streng-geheim");
 
         mockMvc.perform(get("/api/me").header("Authorization", bearer(person)))
                 .andExpect(status().isOk())
@@ -106,12 +106,12 @@ class MeApiTest {
     @Test
     void professorinBekommtDieselbenFelderMitStartsemesterNull() throws Exception {
         Nutzende person = nutzendeRepository.save(
-                new Nutzende("me-prof@example.com", "hash-egal", Rolle.PROFESSOR_IN));
+                new Nutzende("me-prof@htw-berlin.de", "hash-egal", Rolle.PROFESSOR_IN));
 
         mockMvc.perform(get("/api/me").header("Authorization", bearer(person)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(person.getNutzendeId()))
-                .andExpect(jsonPath("$.email").value("me-prof@example.com"))
+                .andExpect(jsonPath("$.email").value("me-prof@htw-berlin.de"))
                 .andExpect(jsonPath("$.role").value("PROFESSOR_IN"))
                 .andExpect(jsonPath("$.startSemester").isEmpty());
     }
@@ -131,7 +131,7 @@ class MeApiTest {
     @Test
     void geloeschtePersonGibt401UndNicht500() throws Exception {
         Nutzende person = nutzendeRepository.save(
-                new Nutzende("me-geloescht@example.com", "hash-egal", Rolle.PROFESSOR_IN));
+                new Nutzende("me-geloescht@htw-berlin.de", "hash-egal", Rolle.PROFESSOR_IN));
         String token = bearer(person);
 
         // Das Token bleibt bis zu einer Stunde gültig, die Person ist aber weg.

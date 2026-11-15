@@ -44,7 +44,7 @@ class ModuleApiTest {
 
     private MockHttpServletRequestBuilder authenticatedGet(String path) {
         Nutzende testUser = new Nutzende(
-                "module-test@example.com",
+                "module-test@student.htw-berlin.de",
                 "unused",
                 Rolle.STUDIERENDE);
         testUser.setNutzendeId(1);
