@@ -150,7 +150,9 @@ public class Semester implements Comparable<Semester> {
             return yearComparison;
         }
 
-        return Integer.compare(semesterOrder(this.art), semesterOrder(other.art));
+        // Getter statt Feld: other kann ein Lazy-Proxy von Hibernate sein (z. B. das
+        // Startsemester). Dessen Felder sind leer, erst der Getter lädt die Daten.
+        return Integer.compare(semesterOrder(getArt()), semesterOrder(other.getArt()));
     }
 
     /**

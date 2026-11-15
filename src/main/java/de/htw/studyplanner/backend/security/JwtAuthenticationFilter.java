@@ -17,6 +17,15 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+/**
+ * Liest bei jeder Anfrage das Token aus dem Header {@code Authorization: Bearer ...}.
+ *
+ * <p>Ohne Header läuft die Anfrage unverändert weiter. Ob der Pfad ein Token braucht,
+ * entscheidet die {@link de.htw.studyplanner.backend.config.SecurityConfig}.
+ * Ist das Token ungültig, abgelaufen oder ohne Rolle, antwortet der Filter sofort mit 401.
+ * Bei gültigem Token legt er die Person mit ihrer Rolle im SecurityContext ab
+ * ({@code ROLE_} plus die Rolle aus dem Token).
+ */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -29,6 +38,15 @@ public JwtAuthenticationFilter(JwtService jwtService, ApiErrorWriter apiErrorWri
     
 }
 
+    /**
+     * Prüft das Token der Anfrage und meldet die Person im SecurityContext an.
+     *
+     * @param request     die eingehende Anfrage
+     * @param response    die Antwort; bei ungültigem Token wird hier 401 geschrieben
+     * @param filterChain der Rest der Filterkette
+     * @throws ServletException bei Fehlern in der Filterkette
+     * @throws IOException      bei Fehlern beim Schreiben der Antwort
+     */
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -62,10 +80,22 @@ public JwtAuthenticationFilter(JwtService jwtService, ApiErrorWriter apiErrorWri
         String email = claims.get("email", String.class);
         String rolle = claims.get("rolle", String.class);
 
+        // Ein Token ohne Rolle wird abgelehnt, sonst entstünde die Rolle "ROLE_null".
+        if (rolle == null) {
+            apiErrorWriter.writeError(
+                    request,
+                    response,
+                    HttpStatus.UNAUTHORIZED,
+                    "Dein Token ist ungültig oder abgelaufen. Bitte melde dich erneut an.");
+            return;
+        }
+
         var authority = new SimpleGrantedAuthority("ROLE_" + rolle);
 
+                Integer id = Integer.valueOf(claims.getSubject());
+
         var authentication = new UsernamePasswordAuthenticationToken(
-                email,
+                new AngemeldetePerson(id, email),
                 null,
                 List.of(authority));
 
@@ -75,11 +105,23 @@ public JwtAuthenticationFilter(JwtService jwtService, ApiErrorWriter apiErrorWri
 
         filterChain.doFilter(request, response);
     }
-    @Override 
-    protected boolean shouldNotFilter(HttpServletRequest request){
-        return request.getServletPath().startsWith("/api/auth") 
-                || request.getServletPath().startsWith("/api/health")
-                || request.getServletPath().startsWith("/swagger-ui")
-                || request.getServletPath().startsWith("/v3/api-docs"); 
+    /**
+     * Legt fest, für welche Pfade der Filter nicht läuft.
+     *
+     * <p>Login, Registrierung, Health, Swagger und die API-Dokumentation brauchen kein Token.
+     * Alle anderen Pfade werden gefiltert.
+     *
+     * @param request die eingehende Anfrage
+     * @return true, wenn der Pfad ohne Token erreichbar ist
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String pfad = request.getServletPath();
+        // Nur Login und Registrierung brauchen kein Token. /api/me muss gefiltert werden.
+        return pfad.equals("/api/auth/login")
+                || pfad.equals("/api/auth/register")
+                || pfad.startsWith("/api/health")
+                || pfad.startsWith("/swagger-ui")
+                || pfad.startsWith("/v3/api-docs");
     }
 }

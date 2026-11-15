@@ -55,7 +55,7 @@ class AuthRegistrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email")
                         .value("erfolg@example.com"))
-                .andExpect(jsonPath("$.rolle")
+                .andExpect(jsonPath("$.role")
                         .value("STUDIERENDE"))
                 .andExpect(jsonPath("$.passwortHash")
                         .doesNotExist());
@@ -117,6 +117,40 @@ class AuthRegistrationTest {
     }
 
     @Test
+    void emailWirdKleinGespeichertUndAndereSchreibweiseLiefert409()
+            throws Exception {
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "Mischung@Example.COM",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 2025"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email")
+                        .value("mischung@example.com"));
+
+        // Das Konto ist in Kleinbuchstaben gespeichert.
+        assertThat(nutzendeRepository.findByEmail("mischung@example.com"))
+                .isPresent();
+
+        // Dieselbe Adresse in anderer Schreibweise ist ein Duplikat.
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "mischung@example.com",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 2025"
+                                }
+                                """))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void ungueltigeEmailLiefert400()
             throws Exception {
 
@@ -168,6 +202,41 @@ class AuthRegistrationTest {
     }
 
     @Test
+    void startsemesterAusserhalbVon2000Bis2100Liefert400StattServerfehler()
+            throws Exception {
+
+        // "WS 1999" passt zum @Pattern, das Jahr prüft erst der SemesterService.
+        // Ohne diese Prüfung käme der CHECK der Datenbank und damit ein 500.
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "jahr1999@example.com",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 1999"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("startsemester"));
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "jahr2101@example.com",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 2101"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("startsemester"));
+
+        // Es wurde niemand angelegt.
+        assertThat(nutzendeRepository.findByEmail("jahr1999@example.com")).isEmpty();
+        assertThat(nutzendeRepository.findByEmail("jahr2101@example.com")).isEmpty();
+    }
+
+    @Test
     void rolleWirdImmerAufStudierendeGesetzt()
             throws Exception {
 
@@ -182,7 +251,7 @@ class AuthRegistrationTest {
                                 }
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.rolle")
+                .andExpect(jsonPath("$.role")
                         .value("STUDIERENDE"));
 
         var nutzende = nutzendeRepository

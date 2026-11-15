@@ -89,6 +89,25 @@ class AuthLoginTest {
     }
 
     @Test
+    void loginIgnoriertGrossUndKleinschreibungDerEmail() throws Exception {
+        nutzendeRepository.save(new Nutzende(
+                "gross@example.com",
+                passwordEncoder.encode("geheimesPasswort"),
+                Rolle.STUDIERENDE));
+
+        // Das Konto ist klein gespeichert, der Login kommt mit Großbuchstaben.
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "Gross@Example.COM",
+                                  "password": "geheimesPasswort"
+                                }
+                                """))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void healthOhneTokenLiefert200() throws Exception {
         mockMvc.perform(get("/api/health"))
                 .andExpect(status().isOk());

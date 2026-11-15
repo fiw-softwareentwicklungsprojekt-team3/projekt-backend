@@ -3,6 +3,12 @@ package de.htw.studyplanner.backend.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 
+/**
+ * DTO für die Anmeldung eines Benutzers.
+ *
+ * @param email    E-Mail-Adresse des Kontos
+ * @param password Passwort im Klartext
+ */
 public record LoginRequest(
         @NotBlank(message = "Email darf nicht leer sein ")
         @Email(message = "Email ist ungültig ")
