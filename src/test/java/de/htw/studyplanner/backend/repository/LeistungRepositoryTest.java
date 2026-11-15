@@ -59,7 +59,7 @@ class LeistungRepositoryTest {
     void legeStudierendeAn() {
         ws2025 = semesterRepository.findByJahrAndArt(2025, SemesterArt.WS).orElseThrow();
         Nutzende nutzende = nutzendeRepository.saveAndFlush(
-                new Nutzende("leistung.test@htw-berlin.de", "hash", Rolle.STUDIERENDE));
+                new Nutzende("leistung.test@student.htw-berlin.de", "hash", Rolle.STUDIERENDE));
         studierende = studierendeRepository.saveAndFlush(new Studierende(nutzende, ws2025));
         b11 = modulRepository.findById("B11").orElseThrow();
     }

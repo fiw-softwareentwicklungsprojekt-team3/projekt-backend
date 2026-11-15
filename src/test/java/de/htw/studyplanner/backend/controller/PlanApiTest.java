@@ -64,7 +64,7 @@ class PlanApiTest {
     private String neueStudierende() {
         Nutzende person = new TransactionTemplate(transactionManager).execute(status -> {
             Nutzende n = nutzendeRepository.save(new Nutzende(
-                    "plan-" + UUID.randomUUID() + "@example.com", "hash-egal", Rolle.STUDIERENDE));
+                    "plan-" + UUID.randomUUID() + "@student.htw-berlin.de", "hash-egal", Rolle.STUDIERENDE));
             Semester ws2026 = semesterRepository.findByJahrAndArt(2026, SemesterArt.WS)
                     .orElseGet(() -> semesterRepository.save(new Semester(2026, SemesterArt.WS)));
             studierendeRepository.save(new Studierende(n, ws2026));
@@ -105,7 +105,7 @@ class PlanApiTest {
     @Test
     void professorinBekommt403() throws Exception {
         Nutzende prof = nutzendeRepository.save(new Nutzende(
-                "plan-prof-" + UUID.randomUUID() + "@example.com", "hash-egal", Rolle.PROFESSOR_IN));
+                "plan-prof-" + UUID.randomUUID() + "@htw-berlin.de", "hash-egal", Rolle.PROFESSOR_IN));
         String token = "Bearer " + jwtService.generateToken(prof);
 
         postEntry(token, """
