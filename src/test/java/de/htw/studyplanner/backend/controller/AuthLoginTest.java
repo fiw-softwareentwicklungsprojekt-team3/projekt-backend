@@ -1,6 +1,5 @@
 package de.htw.studyplanner.backend.controller;
 
-import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -141,7 +140,7 @@ class AuthLoginTest {
                 // Nur der Format-Fehler, nicht zusätzlich der Domain-Fehler.
                 .andExpect(jsonPath("$.errors.length()").value(1))
                 .andExpect(jsonPath("$.errors[0].field").value("email"))
-                .andExpect(jsonPath("$.errors[0].message").value(containsString("ungültig")));
+                .andExpect(jsonPath("$.errors[0].message").value("email ist ungültig"));
     }
 
     @Test
@@ -172,7 +171,7 @@ class AuthLoginTest {
                     .andExpect(jsonPath("$.errors.length()").value(1))
                     .andExpect(jsonPath("$.errors[0].field").value("email"))
                     .andExpect(jsonPath("$.errors[0].message")
-                            .value("Email muss auf @student.htw-berlin.de oder @htw-berlin.de enden"));
+                            .value("email muss auf @student.htw-berlin.de oder @htw-berlin.de enden"));
         }
     }
 

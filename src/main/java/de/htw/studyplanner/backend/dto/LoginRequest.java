@@ -13,13 +13,13 @@ import de.htw.studyplanner.backend.validation.HtwEmail;
  * @param password Passwort im Klartext
  */
 public record LoginRequest(
-        @NotBlank(message = "Email darf nicht leer sein ")
-        @Email(message = "Email ist ungültig ")
+        @NotBlank(message = "email darf nicht leer sein")
+        @Email(message = "email ist ungültig")
         @HtwEmail(domains = {HtwEmail.STUDIERENDE, HtwEmail.LEHRENDE},
-                message = "Email muss auf @student.htw-berlin.de oder @htw-berlin.de enden")
+                message = "email muss auf @student.htw-berlin.de oder @htw-berlin.de enden")
         String email,
 
-        @NotBlank(message = "Password darf nicht leer sein ")
+        @NotBlank(message = "password darf nicht leer sein")
         String password
 ) {
 }

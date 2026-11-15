@@ -76,6 +76,7 @@ class OpenApiDocsTest {
     void registrierungUndLoginBeschreibenDieHtwEmailRegel() throws Exception {
         // US-28: Statuscodes, Beschreibung und Beispielwerte nennen die erlaubten HTW-Domains.
         mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/api/auth/login'].post.responses['200']").exists())
                 .andExpect(jsonPath("$.paths['/api/auth/login'].post.responses['400']").exists())
                 .andExpect(jsonPath("$.paths['/api/auth/login'].post.responses['401']").exists())

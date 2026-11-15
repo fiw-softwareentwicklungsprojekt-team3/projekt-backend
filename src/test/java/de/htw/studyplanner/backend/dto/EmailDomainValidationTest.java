@@ -22,9 +22,9 @@ class EmailDomainValidationTest {
 
     private static final String FORMAT_REGISTER = "email ist ungültig";
     private static final String DOMAIN_REGISTER = "email muss auf @student.htw-berlin.de enden";
-    private static final String FORMAT_LOGIN = "Email ist ungültig ";
+    private static final String FORMAT_LOGIN = "email ist ungültig";
     private static final String DOMAIN_LOGIN =
-            "Email muss auf @student.htw-berlin.de oder @htw-berlin.de enden";
+            "email muss auf @student.htw-berlin.de oder @htw-berlin.de enden";
 
     private static ValidatorFactory factory;
     private static Validator validator;
