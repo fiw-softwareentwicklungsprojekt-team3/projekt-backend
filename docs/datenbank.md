@@ -102,3 +102,17 @@ Turnus (WS/SS) wird beachtet.
 Zeile überschreibt, steht in `leistung.status` immer nur der aktuelle Stand. Eine
 Durchfallquote je Modul lässt sich deshalb nicht aus `status` ablesen, sondern
 nur über `anzahl_versuche > 1`.
+
+## Lehrenden-Konto (PROFESSOR_IN)
+
+Lehrende können sich nicht selbst registrieren. Ein Konto entsteht beim Start der Anwendung, wenn in der `.env` beide Werte gesetzt sind:
+
+```
+PROFESSOR_EMAIL=lehrende@example.com
+PROFESSOR_PASSWORD=ein-eigenes-passwort
+```
+
+- Lokal und auf dem Server steht das in der eigenen `.env`. Sie wird nie committet.
+- Sind die Werte leer, passiert nichts. Gibt es die E-Mail schon, wird kein zweites Konto angelegt.
+- Das Konto hat die Rolle `PROFESSOR_IN` und keinen Eintrag in `studierende`.
+- Anmelden: `POST /api/auth/login` (Antwort enthält `role: "PROFESSOR_IN"`).
