@@ -20,9 +20,6 @@ import de.htw.studyplanner.backend.repository.SemesterRepository;
 public class SemesterService {
 
     private static final Pattern SEMESTER_PATTERN = Pattern.compile("^(WS|SS) (\\d{4})$");
-    private static final int MIN_SEMESTER_YEAR = 2000;
-    private static final int MAX_SEMESTER_YEAR = 2100;
-
     /** Kleinstes erlaubtes Jahr, wie der CHECK auf semester.jahr in V1. */
     static final int MIN_JAHR = 2000;
     /** Größtes erlaubtes Jahr, wie der CHECK auf semester.jahr in V1. */
@@ -87,13 +84,6 @@ public class SemesterService {
     }
 
     /**
- feature/us-31-planpruefer
-     * Prüft, ob ein Semester vor dem zu einem Datum gehörenden Semester liegt.
-     *
-     * @param semester das zu prüfende Semester
-     * @param datum das Bezugsdatum
-     * @return {@code true}, wenn das Semester bereits vorbei ist
-
      * Prüft, ob ein Semester am gegebenen Datum schon vorbei ist, also vor dem
      * aktuellen Semester liegt. Das laufende Semester ist nicht vorbei.
      * Das Datum kommt als Parameter, damit Tests nicht vom heutigen Tag abhängen.
@@ -101,7 +91,6 @@ public class SemesterService {
      * @param semester das zu prüfende Semester
      * @param datum    das Datum, zu dem geprüft wird
      * @return {@code true}, wenn {@code semester} vor {@link #aktuellesSemester(LocalDate)} liegt
- main
      */
     public boolean istVorbei(Semester semester, LocalDate datum) {
         return istFrueher(semester, aktuellesSemester(datum));
@@ -137,15 +126,7 @@ public class SemesterService {
         // matcher.group(1) = SemesterArt (WS oder SS), matcher.group(2) = Jahr (JJJJ)
         SemesterArt art = SemesterArt.valueOf(matcher.group(1));
         int jahr = Integer.parseInt(matcher.group(2));
- feature/us-31-planpruefer
-        if (jahr < MIN_SEMESTER_YEAR || jahr > MAX_SEMESTER_YEAR) {
-            throw new InvalidSemesterFormatException(
-                    "semester muss ein Jahr zwischen 2000 und 2100 enthalten");
-        }
-
-
         validateJahr(jahr, feld);
-main
         return new Semester(jahr, art);
     }
 
