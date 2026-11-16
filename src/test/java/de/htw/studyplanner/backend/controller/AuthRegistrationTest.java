@@ -47,15 +47,15 @@ class AuthRegistrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "email": "erfolg@example.com",
+                                  "email": "erfolg@student.htw-berlin.de",
                                   "password": "geheimesPasswort",
                                   "startsemester": "WS 2025"
                                 }
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email")
-                        .value("erfolg@example.com"))
-                .andExpect(jsonPath("$.rolle")
+                        .value("erfolg@student.htw-berlin.de"))
+                .andExpect(jsonPath("$.role")
                         .value("STUDIERENDE"))
                 .andExpect(jsonPath("$.passwortHash")
                         .doesNotExist());
@@ -69,7 +69,7 @@ class AuthRegistrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "email": "bcrypt@example.com",
+                                  "email": "bcrypt@student.htw-berlin.de",
                                   "password": "geheimesPasswort",
                                   "startsemester": "WS 2025"
                                 }
@@ -77,7 +77,7 @@ class AuthRegistrationTest {
                 .andExpect(status().isCreated());
 
         var nutzende = nutzendeRepository
-                .findByEmail("bcrypt@example.com")
+                .findByEmail("bcrypt@student.htw-berlin.de")
                 .orElseThrow();
 
         assertThat(nutzende.getPasswortHash())
@@ -98,7 +98,7 @@ class AuthRegistrationTest {
 
         String request = """
                 {
-                  "email": "doppelt@example.com",
+                  "email": "doppelt@student.htw-berlin.de",
                   "password": "geheimesPasswort",
                   "startsemester": "WS 2025"
                 }
@@ -117,6 +117,40 @@ class AuthRegistrationTest {
     }
 
     @Test
+    void emailWirdKleinGespeichertUndAndereSchreibweiseLiefert409()
+            throws Exception {
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "Mischung@Student.HTW-Berlin.DE",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 2025"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email")
+                        .value("mischung@student.htw-berlin.de"));
+
+        // Das Konto ist in Kleinbuchstaben gespeichert.
+        assertThat(nutzendeRepository.findByEmail("mischung@student.htw-berlin.de"))
+                .isPresent();
+
+        // Dieselbe Adresse in anderer Schreibweise ist ein Duplikat.
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "mischung@student.htw-berlin.de",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 2025"
+                                }
+                                """))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void ungueltigeEmailLiefert400()
             throws Exception {
 
@@ -130,7 +164,63 @@ class AuthRegistrationTest {
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors[0].field").value("email"));
+                // Nur der Format-Fehler, nicht zusätzlich der Domain-Fehler.
+                .andExpect(jsonPath("$.errors.length()").value(1))
+                .andExpect(jsonPath("$.errors[0].field").value("email"))
+                .andExpect(jsonPath("$.errors[0].message").value("email ist ungültig"));
+    }
+
+    @Test
+    void htwAdresseWirdUnabhaengigVonGrossUndKleinschreibungAkzeptiert()
+            throws Exception {
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "Name@Student.HTW-Berlin.de",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 2025"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email")
+                        .value("name@student.htw-berlin.de"));
+    }
+
+    @Test
+    void gueltigeEmailOhneStudierendenDomainLiefert400()
+            throws Exception {
+
+        // Alle Adressen sind als E-Mail gültig, gehören aber nicht zu @student.htw-berlin.de:
+        // fremde Domain, Lehrenden-Domain und drei Tricks mit ähnlichen Domains.
+        String[] emails = {
+                "domain-fremd@gmail.com",
+                "domain-lehrende@htw-berlin.de",
+                "domain-trick1@fakestudent.htw-berlin.de",
+                "student.htw-berlin.de@gmail.com",
+                "domain-trick2@student.htw-berlin.de.example.com"
+        };
+
+        for (String email : emails) {
+            mockMvc.perform(post("/api/auth/register")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "email": "%s",
+                                      "password": "geheimesPasswort",
+                                      "startsemester": "WS 2025"
+                                    }
+                                    """.formatted(email)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.length()").value(1))
+                    .andExpect(jsonPath("$.errors[0].field").value("email"))
+                    .andExpect(jsonPath("$.errors[0].message")
+                            .value("email muss auf @student.htw-berlin.de enden"));
+
+            // Es wurde niemand angelegt.
+            assertThat(nutzendeRepository.findByEmail(email)).isEmpty();
+        }
     }
 
     @Test
@@ -141,7 +231,7 @@ class AuthRegistrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "email": "kurz@example.com",
+                                  "email": "kurz@student.htw-berlin.de",
                                   "password": "abc",
                                   "startsemester": "WS 2025"
                                 }
@@ -158,13 +248,48 @@ class AuthRegistrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "email": "sommer@example.com",
+                                  "email": "sommer@student.htw-berlin.de",
                                   "password": "geheimesPasswort",
                                   "startsemester": "SS 2025"
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("startsemester"));
+    }
+
+    @Test
+    void startsemesterAusserhalbVon2000Bis2100Liefert400StattServerfehler()
+            throws Exception {
+
+        // "WS 1999" passt zum @Pattern, das Jahr prüft erst der SemesterService.
+        // Ohne diese Prüfung käme der CHECK der Datenbank und damit ein 500.
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "jahr1999@student.htw-berlin.de",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 1999"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("startsemester"));
+
+        mockMvc.perform(post("/api/auth/register")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "jahr2101@student.htw-berlin.de",
+                                  "password": "geheimesPasswort",
+                                  "startsemester": "WS 2101"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("startsemester"));
+
+        // Es wurde niemand angelegt.
+        assertThat(nutzendeRepository.findByEmail("jahr1999@student.htw-berlin.de")).isEmpty();
+        assertThat(nutzendeRepository.findByEmail("jahr2101@student.htw-berlin.de")).isEmpty();
     }
 
     @Test
@@ -175,18 +300,18 @@ class AuthRegistrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "email": "rolle@example.com",
+                                  "email": "rolle@student.htw-berlin.de",
                                   "password": "geheimesPasswort",
                                   "startsemester": "WS 2025",
                                   "rolle": "PROFESSOR_IN"
                                 }
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.rolle")
+                .andExpect(jsonPath("$.role")
                         .value("STUDIERENDE"));
 
         var nutzende = nutzendeRepository
-                .findByEmail("rolle@example.com")
+                .findByEmail("rolle@student.htw-berlin.de")
                 .orElseThrow();
 
         assertThat(nutzende.getRolle())
@@ -201,7 +326,7 @@ class AuthRegistrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "email": "semester@example.com",
+                                  "email": "semester@student.htw-berlin.de",
                                   "password": "geheimesPasswort",
                                   "startsemester": "WS 2099"
                                 }

@@ -1,5 +1,7 @@
 package de.htw.studyplanner.backend.service;
 
+import java.util.Locale;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,21 +60,29 @@ public class RegistrationService {
      */
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-        
-        // HIER IST DIE ÄNDERUNG: Nutzt jetzt dein neues Fehlerformat
-        if (nutzendeRepository.findByEmail(request.email()).isPresent()) {
+
+        // E-Mail wird in Kleinbuchstaben gespeichert und gesucht.
+        String email = request.email().toLowerCase(Locale.ROOT);
+        // Die E-Mail muss eindeutig sein, sonst Konflikt (409).
+        if (nutzendeRepository.findByEmail(email).isPresent()) {
             throw new ConflictException("Diese E-Mail-Adresse ist bereits vergeben.");
         }
 
+ feature/us-31-planpruefer
         Semester parsed = semesterService.parse(request.startsemester());
         Semester semester = semesterService.findeOderLege(parsed.getJahr(), parsed.getArt());
+
+        // Feldname wie im Request, damit errors[].field "startsemester" heißt (wie beim @Pattern-Fehler).
+        Semester parsed = semesterService.parse(request.startsemester(), "startsemester");
+        Semester semester = semesterService.findenOderNeuAnlegen(parsed.getJahr(), parsed.getArt());
+main
 
         String passwortHash = passwordEncoder.encode(request.password());
 
         // Die Rolle wird immer vom Backend gesetzt.
         Nutzende nutzende = nutzendeRepository.save(
                 new Nutzende(
-                        request.email(),
+                        email,
                         passwortHash,
                         Rolle.STUDIERENDE
                 ));

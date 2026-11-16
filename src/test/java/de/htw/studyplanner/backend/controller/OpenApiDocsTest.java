@@ -1,5 +1,6 @@
 package de.htw.studyplanner.backend.controller;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -33,7 +34,9 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/health'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/auth/register'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/modules'].get").exists())
-                .andExpect(jsonPath("$.paths['/api/modules/{code}'].get").exists());
+                .andExpect(jsonPath("$.paths['/api/modules/{code}'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/me'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries'].post").exists());
     }
 
     @Test
@@ -45,7 +48,20 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/modules'].get.responses['200']").exists())
                 .andExpect(jsonPath("$.paths['/api/modules'].get.responses['400']").exists())
                 .andExpect(jsonPath("$.paths['/api/modules/{code}'].get.responses['200']").exists())
-                .andExpect(jsonPath("$.paths['/api/modules/{code}'].get.responses['404']").exists());
+                .andExpect(jsonPath("$.paths['/api/modules/{code}'].get.responses['404']").exists())
+                .andExpect(jsonPath("$.paths['/api/me'].get.responses['200']").exists())
+                .andExpect(jsonPath("$.paths['/api/me'].get.responses['401']").exists())
+                .andExpect(jsonPath("$.paths['/api/me'].get.security[0].bearerAuth").exists())
+                .andExpect(jsonPath("$.paths['/api/results'].get.security[0].bearerAuth").exists())
+                .andExpect(jsonPath("$.paths['/api/results/{moduleCode}'].put.responses['400']").exists())
+                .andExpect(jsonPath("$.paths['/api/results/{moduleCode}'].delete.responses['204']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries'].post.responses['201']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries'].post.responses['400']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries'].post.responses['401']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries'].post.responses['403']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries'].post.responses['404']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries'].post.responses['409']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries'].post.security[0].bearerAuth").exists());
     }
 
     @Test
@@ -54,6 +70,26 @@ class OpenApiDocsTest {
         // ApiExceptionHandler dürfen nicht an jedem Endpunkt auftauchen.
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(jsonPath("$.paths['/api/health'].get.responses['409']").doesNotExist());
+    }
+
+    @Test
+    void registrierungUndLoginBeschreibenDieHtwEmailRegel() throws Exception {
+        // US-28: Statuscodes, Beschreibung und Beispielwerte nennen die erlaubten HTW-Domains.
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/api/auth/login'].post.responses['200']").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/login'].post.responses['400']").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/login'].post.responses['401']").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/register'].post.description")
+                        .value(containsString("@student.htw-berlin.de")))
+                .andExpect(jsonPath("$.paths['/api/auth/login'].post.description")
+                        .value(containsString("@student.htw-berlin.de")))
+                .andExpect(jsonPath("$.paths['/api/auth/login'].post.description")
+                        .value(containsString("`@htw-berlin.de`")))
+                .andExpect(jsonPath("$.components.schemas.RegisterRequest.properties.email.example")
+                        .value("studentin@student.htw-berlin.de"))
+                .andExpect(jsonPath("$.components.schemas.RegisterResponse.properties.email.example")
+                        .value("studentin@student.htw-berlin.de"));
     }
 
     @Test

@@ -111,6 +111,35 @@ class SemesterServiceTest {
                 .isInstanceOf(InvalidSemesterFormatException.class);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"WS 1999", "SS 1999", "WS 2101", "SS 2101", "WS 0000", "SS 9999"})
+    void parseJahrAusserhalbVon2000Bis2100WirftInvalidSemesterFormatException(String eingabe) {
+        assertThatThrownBy(() -> semesterService.parse(eingabe))
+                .isInstanceOf(InvalidSemesterFormatException.class)
+                .hasMessageContaining("2000")
+                .hasMessageContaining("2100");
+    }
+
+    @Test
+    void parseMitFeldnameNenntDiesesFeldImFehler() {
+        assertThatThrownBy(() -> semesterService.parse("WS 1999", "startsemester"))
+                .isInstanceOfSatisfying(InvalidSemesterFormatException.class, ex -> {
+                    assertThat(ex.getFeld()).isEqualTo("startsemester");
+                    assertThat(ex.getMessage()).startsWith("startsemester");
+                });
+
+        // Ohne Feldname bleibt es beim Standardfeld "semester".
+        assertThatThrownBy(() -> semesterService.parse("WS 1999"))
+                .isInstanceOfSatisfying(InvalidSemesterFormatException.class,
+                        ex -> assertThat(ex.getFeld()).isEqualTo("semester"));
+    }
+
+    @Test
+    void parseAkzeptiertDieGrenzjahre2000Und2100() {
+        assertThat(semesterService.parse("WS 2000").getJahr()).isEqualTo(2000);
+        assertThat(semesterService.parse("SS 2100").getJahr()).isEqualTo(2100);
+    }
+
     @Test
     void apiExceptionHandlerWandeltInvalidSemesterFormatIn400MitFieldSemesterUm() {
         ApiExceptionHandler handler = new ApiExceptionHandler();
@@ -156,6 +185,50 @@ class SemesterServiceTest {
 
         assertThat(semesterService.istGleich(ws2026, ws2026Kopie)).isTrue();
         assertThat(semesterService.istGleich(ss2027, ws2027)).isFalse();
+    }
+
+    // ------------------------------------------------------------------
+    // istVorbei(Semester, LocalDate) – an beiden Grenzen
+    // ------------------------------------------------------------------
+
+    @Test
+    void istVorbeiGrenzeMaerzAufApril() {
+        Semester ws2026 = new Semester(2026, SemesterArt.WS);
+        Semester ss2027 = new Semester(2027, SemesterArt.SS);
+
+        // 31.03.2027 läuft noch WS 2026
+        LocalDate am31Maerz = LocalDate.of(2027, 3, 31);
+        assertThat(semesterService.istVorbei(ws2026, am31Maerz)).isFalse();
+        assertThat(semesterService.istVorbei(ss2027, am31Maerz)).isFalse();
+
+        // 01.04.2027 beginnt SS 2027, damit ist WS 2026 vorbei
+        LocalDate am01April = LocalDate.of(2027, 4, 1);
+        assertThat(semesterService.istVorbei(ws2026, am01April)).isTrue();
+        assertThat(semesterService.istVorbei(ss2027, am01April)).isFalse();
+    }
+
+    @Test
+    void istVorbeiGrenzeSeptemberAufOktober() {
+        Semester ss2026 = new Semester(2026, SemesterArt.SS);
+        Semester ws2026 = new Semester(2026, SemesterArt.WS);
+
+        // 30.09.2026 läuft noch SS 2026
+        LocalDate am30September = LocalDate.of(2026, 9, 30);
+        assertThat(semesterService.istVorbei(ss2026, am30September)).isFalse();
+        assertThat(semesterService.istVorbei(ws2026, am30September)).isFalse();
+
+        // 01.10.2026 beginnt WS 2026, damit ist SS 2026 vorbei
+        LocalDate am01Oktober = LocalDate.of(2026, 10, 1);
+        assertThat(semesterService.istVorbei(ss2026, am01Oktober)).isTrue();
+        assertThat(semesterService.istVorbei(ws2026, am01Oktober)).isFalse();
+    }
+
+    @Test
+    void istVorbeiIgnoriertSemesterId() {
+        Semester ss2026 = new Semester(2026, SemesterArt.SS);
+        ss2026.setSemesterId(999);
+
+        assertThat(semesterService.istVorbei(ss2026, LocalDate.of(2026, 10, 1))).isTrue();
     }
 
     @Test
@@ -215,7 +288,7 @@ class SemesterServiceTest {
         StudierendeRepository studierendeRepo = mock(StudierendeRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
 
-        when(nutzendeRepo.findByEmail("neu@example.com")).thenReturn(Optional.empty());
+        when(nutzendeRepo.findByEmail("neu@student.htw-berlin.de")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("geheimesPasswort")).thenReturn("hash");
         when(nutzendeRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(semesterRepository.findByJahrAndArt(2026, SemesterArt.WS))
@@ -226,7 +299,7 @@ class SemesterServiceTest {
 
         RegisterResponse response = registrationService.register(
                 new RegisterRequest(
-                        "neu@example.com", "geheimesPasswort", "WS 2026"));
+                        "neu@student.htw-berlin.de", "geheimesPasswort", "WS 2026"));
 
         assertThat(response.startsemester()).isEqualTo("WS 2026");
         verify(semesterRepository).findByJahrAndArt(2026, SemesterArt.WS);

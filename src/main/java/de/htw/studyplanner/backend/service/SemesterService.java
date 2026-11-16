@@ -23,6 +23,11 @@ public class SemesterService {
     private static final int MIN_SEMESTER_YEAR = 2000;
     private static final int MAX_SEMESTER_YEAR = 2100;
 
+    /** Kleinstes erlaubtes Jahr, wie der CHECK auf semester.jahr in V1. */
+    static final int MIN_JAHR = 2000;
+    /** Größtes erlaubtes Jahr, wie der CHECK auf semester.jahr in V1. */
+    static final int MAX_JAHR = 2100;
+
     private final SemesterRepository semesterRepository;
 
     /**
@@ -82,11 +87,21 @@ public class SemesterService {
     }
 
     /**
+ feature/us-31-planpruefer
      * Prüft, ob ein Semester vor dem zu einem Datum gehörenden Semester liegt.
      *
      * @param semester das zu prüfende Semester
      * @param datum das Bezugsdatum
      * @return {@code true}, wenn das Semester bereits vorbei ist
+
+     * Prüft, ob ein Semester am gegebenen Datum schon vorbei ist, also vor dem
+     * aktuellen Semester liegt. Das laufende Semester ist nicht vorbei.
+     * Das Datum kommt als Parameter, damit Tests nicht vom heutigen Tag abhängen.
+     *
+     * @param semester das zu prüfende Semester
+     * @param datum    das Datum, zu dem geprüft wird
+     * @return {@code true}, wenn {@code semester} vor {@link #aktuellesSemester(LocalDate)} liegt
+ main
      */
     public boolean istVorbei(Semester semester, LocalDate datum) {
         return istFrueher(semester, aktuellesSemester(datum));
@@ -98,25 +113,77 @@ public class SemesterService {
      *
      * @param text Semester-String, z. B. {@code "SS 2027"} oder {@code "WS 2026"}
      * @return ein {@link Semester}-Objekt mit dem gelesenen Jahr und der Art
-     * @throws InvalidSemesterFormatException wenn das Format ungültig ist
+     * @throws InvalidSemesterFormatException wenn das Format ungültig ist oder das Jahr
+     *                                        außerhalb von 2000–2100 liegt; Feld {@code semester}
      */
     public Semester parse(String text) {
-        if (text == null) {
-            throw new InvalidSemesterFormatException(
-                    "semester muss das Format 'WS JJJJ' oder 'SS JJJJ' haben");
-        }
-        Matcher matcher = SEMESTER_PATTERN.matcher(text);
-        if (!matcher.matches()) {
-            throw new InvalidSemesterFormatException(
-                    "semester muss das Format 'WS JJJJ' oder 'SS JJJJ' haben");
-        }
+        return parse(text, InvalidSemesterFormatException.STANDARD_FELD);
+    }
+
+    /**
+     * Wie {@link #parse(String)}, aber der Fehler nennt das angegebene Request-Feld,
+     * damit {@code errors[].field} zum Request passt (z. B. {@code startsemester}).
+     *
+     * @param text Semester-String, z. B. {@code "WS 2026"}
+     * @param feld Name des Request-Feldes, aus dem {@code text} stammt
+     * @return ein {@link Semester}-Objekt mit dem gelesenen Jahr und der Art
+     * @throws InvalidSemesterFormatException wenn das Format ungültig ist oder das Jahr
+     *                                        außerhalb von 2000–2100 liegt
+     */
+    public Semester parse(String text, String feld) {
+        // Prüft ausschließlich die äußere Form des Semester-Strings, nicht den Inhalt der Gruppen.
+        Matcher matcher = matchFormat(text, feld);
+
+        // matcher.group(1) = SemesterArt (WS oder SS), matcher.group(2) = Jahr (JJJJ)
         SemesterArt art = SemesterArt.valueOf(matcher.group(1));
         int jahr = Integer.parseInt(matcher.group(2));
+ feature/us-31-planpruefer
         if (jahr < MIN_SEMESTER_YEAR || jahr > MAX_SEMESTER_YEAR) {
             throw new InvalidSemesterFormatException(
                     "semester muss ein Jahr zwischen 2000 und 2100 enthalten");
         }
+
+
+        validateJahr(jahr, feld);
+main
         return new Semester(jahr, art);
+    }
+
+    /**
+     * Prüft, ob der gegebene Text nicht {@code null} ist und dem erwarteten
+     * Semester-Format {@code "WS JJJJ"} oder {@code "SS JJJJ"} entspricht.
+     *
+     * @param text der zu prüfende Semester-String
+     * @param feld Name des Request-Feldes für die Fehlermeldung
+     * @return der erfolgreiche {@link Matcher} mit den Gruppen für Art und Jahr
+     * @throws InvalidSemesterFormatException wenn {@code text} {@code null} ist oder nicht dem Format entspricht
+     */
+    private Matcher matchFormat(String text, String feld) {
+        // Liefert den Matcher zurück, falls text nicht null ist und auf das Muster passt.
+        if (text != null) {
+            Matcher matcher = SEMESTER_PATTERN.matcher(text);
+            if (matcher.matches()) {
+                return matcher;
+            }
+        }
+        throw new InvalidSemesterFormatException(feld,
+                feld + " muss das Format 'WS JJJJ' oder 'SS JJJJ' haben");
+    }
+
+    /**
+     * Prüft, ob das gelesene Jahr innerhalb des erlaubten Bereichs
+     * ({@link #MIN_JAHR}–{@link #MAX_JAHR}) liegt.
+     *
+     * @param jahr das zu prüfende vierstellige Jahr
+     * @param feld Name des Request-Feldes für die Fehlermeldung
+     * @throws InvalidSemesterFormatException wenn das Jahr außerhalb von 2000–2100 liegt
+     */
+    private void validateJahr(int jahr, String feld) {
+        // Gleiche Grenzen wie in der Datenbank, sonst käme beim Speichern ein 500 statt 400.
+        if (jahr < MIN_JAHR || jahr > MAX_JAHR) {
+            throw new InvalidSemesterFormatException(feld,
+                    feld + " muss ein Jahr zwischen " + MIN_JAHR + " und " + MAX_JAHR + " haben");
+        }
     }
 
     /**

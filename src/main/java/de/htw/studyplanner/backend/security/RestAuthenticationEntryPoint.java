@@ -8,6 +8,9 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
+/**
+ * Wird aufgerufen, wenn eine Anfrage ohne gültige Authentifizierung kommt.
+ */
 @Component
 public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 

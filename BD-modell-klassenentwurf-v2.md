@@ -608,11 +608,6 @@ Alle Punkte sind im Team entschieden und, soweit sie die Datenbank betreffen, in
 | E12 | SWS | getrennt in `sws_vorlesung` und `sws_uebung`. PS-Stunden zählen als Übung |
 | E13 | Turnus | neue Spalte `modul.turnus` (`WS`/`SS`/`BEIDE`), vorerst aus dem Fachsemester befüllt |
 | E14 | Bachelorarbeit | `toleranz_lp` als Warnbereich (141–150 LP) und 17 zusätzliche NV-Zeilen für Semester 1–3 (RStPO §25). B65: NV B66 und 177 LP |
-| E23 | Fachpraktikum setzt 60 LP voraus | neue NV-Zeile für B43 mit `min_lp` 60 und `toleranz_lp` 0 (Anlage 2, StuPO §11 Abs. 4). In v2 übersehen, deshalb nachgetragen |
-| E24 | Umfang von `zaehlt_in_x1` | `false` nicht nur bei B11–B16, sondern auch bei B43 (unbenotet), B66 (Größe X2) und B65 (Größe X3). Probe: die übrigen Module ergeben die 115 LP aus der Tabelle in StuPO §15 |
-| E25 | SWS ohne Angabe | als `0` führen, nicht als NULL. Betrifft B43 und B66. Damit bleibt die NOT-NULL-Bedingung aus V1 unverändert und es braucht keine Schema-Migration |
-| E26 | Sprachangebote je Niveau | eine Zeile pro Sprache **und** Niveau (10 Zeilen), weil dieselbe Sprache in B16 und B26 auf unterschiedlichen GER-Niveaus läuft. `niveaustufe` trennt die Module (`1a` = B16, `1b` = B26), das GER-Niveau steht in `code` und `bezeichnung`. „Gleiche Sprache in B16 und B26“ prüft der Service über das Präfix vor dem Unterstrich |
-| E27 | Zielzeile von `plan_eintrag.nutzende_id` und `leistung.nutzende_id` | beide zeigen auf **`studierende`**, nicht auf `nutzende`. Nur Studierende planen Module und erbringen Leistungen. Da eine Person mit der Rolle `PROFESSOR_IN` keine Zeile in `studierende` hat, kann sie schon durch den Fremdschlüssel keinen Plan und keine Leistung bekommen; das muss der Service nicht zusätzlich prüfen. So in V1 umgesetzt, die Diagramme in diesem Dokument zeigten bis jetzt fälschlich `nutzende` |
 | E15 | Erlaubte Noten | nur Werte laut RStPO §17 Abs. 1, als CHECK-Constraint |
 | E16 | Widersprüche in der StuPO | es gilt Anlage 2, außer bei der Modulart (E9) |
 | E17 | Geltungsbereich | nur Vollzeitstudium. Teilzeitplan (Anlage 3) nicht abgebildet |
@@ -622,3 +617,16 @@ Alle Punkte sind im Team entschieden und, soweit sie die Datenbank betreffen, in
 | E21 | Anerkannte Leistungen | als `BESTANDEN` eintragen, kein eigener Status. Unbenotet anerkannt = 4,0 (RStPO §32 Abs. 3) |
 | E22 | Weitere Bedingungen | CHECK, UNIQUE und Service-Regeln laut Abschnitt 3 |
 | E23 | Reihenfolge von Semestern | immer über `jahr` und `art` vergleichen, nie über `semester_id` |
+| E23 | Fachpraktikum setzt 60 LP voraus | neue NV-Zeile für B43 mit `min_lp` 60 und `toleranz_lp` 0 (Anlage 2, StuPO §11 Abs. 4). In v2 übersehen, deshalb nachgetragen |
+| E24 | Umfang von `zaehlt_in_x1` | `false` nicht nur bei B11–B16, sondern auch bei B43 (unbenotet), B66 (Größe X2) und B65 (Größe X3). Probe: die übrigen Module ergeben die 115 LP aus der Tabelle in StuPO §15 |
+| E25 | SWS ohne Angabe | als `0` führen, nicht als NULL. Betrifft B43 und B66. Damit bleibt die NOT-NULL-Bedingung aus V1 unverändert und es braucht keine Schema-Migration |
+| E26 | Sprachangebote je Niveau | eine Zeile pro Sprache **und** Niveau (10 Zeilen), weil dieselbe Sprache in B16 und B26 auf unterschiedlichen GER-Niveaus läuft. `niveaustufe` trennt die Module (`1a` = B16, `1b` = B26), das GER-Niveau steht in `code` und `bezeichnung`. „Gleiche Sprache in B16 und B26“ prüft der Service über das Präfix vor dem Unterstrich |
+| E27 | Zielzeile von `plan_eintrag.nutzende_id` und `leistung.nutzende_id` | beide zeigen auf **`studierende`**, nicht auf `nutzende`. Nur Studierende planen Module und erbringen Leistungen. Da eine Person mit der Rolle `PROFESSOR_IN` keine Zeile in `studierende` hat, kann sie schon durch den Fremdschlüssel keinen Plan und keine Leistung bekommen; das muss der Service nicht zusätzlich prüfen. So in V1 umgesetzt, die Diagramme in diesem Dokument zeigten bis jetzt fälschlich `nutzende` |
+| E29 | Rollenfeld in der API | Das Feld heißt überall `role`, nicht `rolle`. Betrifft `RegisterResponse`, `LoginResponse`, `MeResponse` und das Frontend. Bisher nur als „D1" in #60 zitiert |
+| E30 | Verstöße im Plan | `GET /api/plan` hängt an jeden Eintrag `prerequisitesMet` (true/false) und `violations` (`severity`, `prerequisiteCode`, `message`). Nichts davon wird gespeichert, es wird bei jeder Anfrage berechnet. Bisher ebenfalls als „D1" zitiert (#73) — die Doppelbelegung ist damit aufgelöst |
+| E31 | Planbarer Zeitraum | Planbar ist jedes Semester ab dem Startsemester. Davor → **400** mit `semester` in `errors`. Bisher als „D4" zitiert (#66) |
+| E32 | Was das Speichern blockiert | Nicht erfüllte Voraussetzungen blockieren das Speichern nie (E2). Der **Turnus blockiert dagegen schon**: ein Modul darf nur in ein Semester der passenden Art, sonst **400**. Das Jahr ist frei — ein WS-Modul darf in WS 2026, WS 2027 oder WS 2028 liegen, nur nie in einem SS. Bisher als „D5" zitiert (#66), das beides zusammengefasst hat; am 05.11.2026 getrennt |
+| E33 | Antwort auf POST/PUT im Plan | `POST` und `PUT` auf `/api/plan/entries` antworten mit dem gespeicherten Eintrag inklusive `id`. Das Frontend lädt danach `GET /api/plan` neu. Bisher als „D7" zitiert (#66, #73) |
+| E34 | Keine ADMIN-Rolle | Es gibt nur `STUDIERENDE` und `PROFESSOR_IN`. Eine ADMIN-Rolle wird bewusst nicht eingeführt; die offene Frage aus E1.6 ist damit beantwortet. Stand bisher nur in `docs/architektur.md`, nicht in dieser Tabelle |
+| E35 | Startsemester | Das Studium beginnt nur im Wintersemester (StuPO §8 Abs. 1). Die Registrierung akzeptiert deshalb ausschließlich `WS JJJJ` |
+

@@ -1,0 +1,98 @@
+package de.htw.studyplanner.backend.controller;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.web.servlet.MockMvc;
+
+import de.htw.studyplanner.backend.TestcontainersConfiguration;
+import de.htw.studyplanner.backend.model.Nutzende;
+import de.htw.studyplanner.backend.model.Rolle;
+import de.htw.studyplanner.backend.security.JwtService;
+
+/**
+ * Prüft den Zugriff nach Rolle: 401 ohne Token, 403 bei falscher Rolle.
+ * Endpunkte, die es noch nicht gibt, antworten bei erlaubtem Zugriff mit 404.
+ */
+@SpringBootTest
+@AutoConfigureMockMvc
+@Import(TestcontainersConfiguration.class)
+class RollenZugriffTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private JwtService jwtService;
+
+    private String bearer(Rolle rolle) {
+        Nutzende person = new Nutzende("rollen-test@student.htw-berlin.de", "unused", rolle);
+        person.setNutzendeId(1);
+        return "Bearer " + jwtService.generateToken(person);
+    }
+
+    private int statusVon(String pfad, Rolle rolle) throws Exception {
+        return mockMvc.perform(get(pfad).header("Authorization", bearer(rolle)))
+                .andReturn().getResponse().getStatus();
+    }
+
+    private void assertDurchgekommen(String pfad, Rolle rolle) throws Exception {
+        assertThat(statusVon(pfad, rolle)).isNotIn(401, 403);
+    }
+
+    @Test
+    void studierendeKommenAufPlanDurch() throws Exception {
+        assertDurchgekommen("/api/plan", Rolle.STUDIERENDE);
+    }
+
+    @Test
+    void professorBekommtAufPlan403() throws Exception {
+        mockMvc.perform(get("/api/plan").header("Authorization", bearer(Rolle.PROFESSOR_IN)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void ohneTokenBekommtAufPlan401() throws Exception {
+        mockMvc.perform(get("/api/plan"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void studierendeBekommenAufStatistics403() throws Exception {
+        mockMvc.perform(get("/api/statistics").header("Authorization", bearer(Rolle.STUDIERENDE)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void professorKommtAufStatisticsDurch() throws Exception {
+        assertDurchgekommen("/api/statistics", Rolle.PROFESSOR_IN);
+    }
+
+    @Test
+    void beideRollenDuerfenModuleLesen() throws Exception {
+        mockMvc.perform(get("/api/modules").header("Authorization", bearer(Rolle.STUDIERENDE)))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/modules").header("Authorization", bearer(Rolle.PROFESSOR_IN)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void meIstKeinerRolleVorbehaltenAberBrauchtEinToken() throws Exception {
+        // Ohne Token: 401.
+        mockMvc.perform(get("/api/me"))
+                .andExpect(status().isUnauthorized());
+
+        // Mit Token: nie 403, egal welche Rolle – /api/me ist nicht rollenbeschränkt.
+        // Hier wird absichtlich nicht auf 200 geprüft: Die Person aus bearer(...) steht
+        // nicht in der Datenbank, dafür liefert /api/me korrekt 401 (siehe MeService).
+        // Den Inhalt der Antwort prüft MeApiTest.
+        assertThat(statusVon("/api/me", Rolle.STUDIERENDE)).isNotEqualTo(403);
+        assertThat(statusVon("/api/me", Rolle.PROFESSOR_IN)).isNotEqualTo(403);
+    }
+}
