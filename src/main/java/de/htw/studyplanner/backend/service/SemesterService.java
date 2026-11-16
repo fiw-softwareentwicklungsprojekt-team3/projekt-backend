@@ -20,6 +20,8 @@ import de.htw.studyplanner.backend.repository.SemesterRepository;
 public class SemesterService {
 
     private static final Pattern SEMESTER_PATTERN = Pattern.compile("^(WS|SS) (\\d{4})$");
+    private static final int MIN_SEMESTER_YEAR = 2000;
+    private static final int MAX_SEMESTER_YEAR = 2100;
 
     private final SemesterRepository semesterRepository;
 
@@ -80,6 +82,17 @@ public class SemesterService {
     }
 
     /**
+     * Prüft, ob ein Semester vor dem zu einem Datum gehörenden Semester liegt.
+     *
+     * @param semester das zu prüfende Semester
+     * @param datum das Bezugsdatum
+     * @return {@code true}, wenn das Semester bereits vorbei ist
+     */
+    public boolean istVorbei(Semester semester, LocalDate datum) {
+        return istFrueher(semester, aktuellesSemester(datum));
+    }
+
+    /**
      * Zerlegt einen Semester-String im Format {@code "WS JJJJ"} oder {@code "SS JJJJ"}
      * in Jahr und Art.
      *
@@ -99,6 +112,10 @@ public class SemesterService {
         }
         SemesterArt art = SemesterArt.valueOf(matcher.group(1));
         int jahr = Integer.parseInt(matcher.group(2));
+        if (jahr < MIN_SEMESTER_YEAR || jahr > MAX_SEMESTER_YEAR) {
+            throw new InvalidSemesterFormatException(
+                    "semester muss ein Jahr zwischen 2000 und 2100 enthalten");
+        }
         return new Semester(jahr, art);
     }
 
@@ -111,9 +128,16 @@ public class SemesterService {
      * @return die persistierte {@link Semester}-Entität
      */
     @Transactional
-    public Semester findenOderNeuAnlegen(int jahr, SemesterArt art) {
+    public Semester findeOderLege(int jahr, SemesterArt art) {
         return semesterRepository.findByJahrAndArt(jahr, art)
                 .orElseGet(() -> semesterRepository.save(new Semester(jahr, art)));
     }
-}
 
+    /**
+     * Rückwärtskompatibler Alias für bestehende Aufrufer.
+     */
+    @Transactional
+    public Semester findenOderNeuAnlegen(int jahr, SemesterArt art) {
+        return findeOderLege(jahr, art);
+    }
+}

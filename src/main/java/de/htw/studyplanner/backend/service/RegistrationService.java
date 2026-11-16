@@ -65,7 +65,7 @@ public class RegistrationService {
         }
 
         Semester parsed = semesterService.parse(request.startsemester());
-        Semester semester = semesterService.findenOderNeuAnlegen(parsed.getJahr(), parsed.getArt());
+        Semester semester = semesterService.findeOderLege(parsed.getJahr(), parsed.getArt());
 
         String passwortHash = passwordEncoder.encode(request.password());
 

@@ -101,6 +101,8 @@ class SemesterServiceTest {
             "WiSe 2026",
             "XX 2027",
             "WS 202a",
+            "SS 1999",
+            "WS 2101",
             " WS 2026",
             "WS 2026 "
     })
@@ -154,6 +156,17 @@ class SemesterServiceTest {
 
         assertThat(semesterService.istGleich(ws2026, ws2026Kopie)).isTrue();
         assertThat(semesterService.istGleich(ss2027, ws2027)).isFalse();
+    }
+
+    @Test
+    void istVorbeiVergleichtMitAktuellemSemester() {
+        Semester ws2026 = new Semester(2026, SemesterArt.WS);
+        Semester ss2027 = new Semester(2027, SemesterArt.SS);
+
+        assertThat(semesterService.istVorbei(ws2026, LocalDate.of(2027, 3, 31))).isFalse();
+        assertThat(semesterService.istVorbei(ws2026, LocalDate.of(2027, 4, 1))).isTrue();
+        assertThat(semesterService.istVorbei(ss2027, LocalDate.of(2027, 9, 30))).isFalse();
+        assertThat(semesterService.istVorbei(ss2027, LocalDate.of(2027, 10, 1))).isTrue();
     }
 
     @Test
