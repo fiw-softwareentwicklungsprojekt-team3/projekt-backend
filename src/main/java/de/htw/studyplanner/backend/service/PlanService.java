@@ -37,6 +37,7 @@ public class PlanService {
     private final ModulRepository modulRepository;
     private final WahlangebotRepository wahlangebotRepository;
     private final SemesterService semesterService;
+    private final OfferService offerService;
 
     /**
      * Erstellt den Service.
@@ -46,17 +47,20 @@ public class PlanService {
      * @param modulRepository       Zugriff auf den Modulkatalog
      * @param wahlangebotRepository Zugriff auf die Wahlangebote
      * @param semesterService       liest, vergleicht und legt Semester an
+     * @param offerService          weiß, welche Wahlangebote zu welchem Modul passen
      */
     public PlanService(PlanEintragRepository planEintragRepository,
                        StudierendeRepository studierendeRepository,
                        ModulRepository modulRepository,
                        WahlangebotRepository wahlangebotRepository,
-                       SemesterService semesterService) {
+                       SemesterService semesterService,
+                       OfferService offerService) {
         this.planEintragRepository = planEintragRepository;
         this.studierendeRepository = studierendeRepository;
         this.modulRepository = modulRepository;
         this.wahlangebotRepository = wahlangebotRepository;
         this.semesterService = semesterService;
+        this.offerService = offerService;
     }
 
     /**
@@ -153,11 +157,24 @@ public class PlanService {
 
         // Bei Auswahl-Modulen (mit_auswahl = true: B16, B26, B41, B54, B63, B64) sind
         // offerCode, courseCode und courseTitle beim Planen optional. Wird ein offerCode
-        // übergeben (z. B. WP1..WP15 oder EN_B2.1), muss er in wahlangebot existieren.
+        // übergeben, muss er existieren und zum Modul passen. Ob er passt, entscheidet
+        // der OfferService, also dieselbe Regel wie im Modulkatalog und bei den Leistungen.
         if (!leer(request.offerCode())) {
-            return wahlangebotRepository.findById(request.offerCode().trim())
+            if (!offerService.hatFesteAuswahl(modul)) {
+                // B63/B64: freie Wahl, keine Angebotsliste, nur eigene Kursnummer
+                throw new FieldValidationException("offerCode",
+                        "Für das Modul " + modul.getCode()
+                                + " gibt es keine Angebotsliste, nur eine eigene Kursnummer.");
+            }
+            Wahlangebot wahlangebot = wahlangebotRepository.findById(request.offerCode().trim())
                     .orElseThrow(() -> new FieldValidationException("offerCode",
                             "Das Wahlangebot " + request.offerCode() + " gibt es nicht."));
+            if (!offerService.passtZumModul(modul, wahlangebot)) {
+                throw new FieldValidationException("offerCode",
+                        "Das Wahlangebot " + wahlangebot.getCode() + " passt nicht zu Modul "
+                                + modul.getCode() + ".");
+            }
+            return wahlangebot;
         }
 
         return null;
