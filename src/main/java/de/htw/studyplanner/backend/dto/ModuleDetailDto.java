@@ -25,6 +25,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * @param countsForFinalGrade  {@code true}, wenn das Modul in die Gesamtnote eingeht
  * @param graded               {@code false} bei unbenoteten Modulen (Fachpraktikum)
  * @param prerequisites        Voraussetzungen, notwendige zuerst; leer, wenn es keine gibt
+ * @param offers               wählbare Angebote, sortiert nach Code; nur bei B16, B26, B41 und B54,
+ *                             sonst leer (auch bei B63/B64, dort gibt es keine feste Auswahl)
  */
 @Schema(description = "Ein Modul mit allen Angaben und Voraussetzungen")
 public record ModuleDetailDto(
@@ -55,16 +57,21 @@ public record ModuleDetailDto(
         @Schema(description = "false bei unbenoteten Modulen (Fachpraktikum)", example = "true")
         boolean graded,
         @Schema(description = "Voraussetzungen, notwendige zuerst; leer, wenn es keine gibt")
-        List<PrerequisiteDto> prerequisites) {
+        List<PrerequisiteDto> prerequisites,
+        @Schema(description = "Wählbare Angebote (Sprachen oder Wahlpflicht-Bereiche), sortiert nach Code. "
+                + "Nur bei B16, B26, B41 und B54; sonst leer, auch bei B63/B64 (freie Wahl).")
+        List<OfferDto> offers) {
 
     /**
-     * Wandelt ein {@link Modul} samt bereits umgewandelter Voraussetzungen in die Detailfassung um.
+     * Wandelt ein {@link Modul} samt bereits umgewandelter Voraussetzungen und Angebote
+     * in die Detailfassung um.
      *
      * @param m             das Modul aus der Datenbank
      * @param prerequisites die Voraussetzungen, bereits sortiert
+     * @param offers        die wählbaren Angebote, bereits sortiert; leer, wenn es keine gibt
      * @return die Detailfassung des Moduls
      */
-    public static ModuleDetailDto of(Modul m, List<PrerequisiteDto> prerequisites) {
+    public static ModuleDetailDto of(Modul m, List<PrerequisiteDto> prerequisites, List<OfferDto> offers) {
         return new ModuleDetailDto(
                 m.getCode(),
                 m.getBezeichnung(),
@@ -79,6 +86,7 @@ public record ModuleDetailDto(
                 m.getTurnus(),
                 m.isZaehltInX1(),
                 m.isBenotet(),
-                prerequisites);
+                prerequisites,
+                offers);
     }
 }

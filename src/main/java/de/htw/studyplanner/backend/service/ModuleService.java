@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import de.htw.studyplanner.backend.dto.ModuleDetailDto;
 import de.htw.studyplanner.backend.dto.ModuleDto;
+import de.htw.studyplanner.backend.dto.OfferDto;
 import de.htw.studyplanner.backend.dto.PrerequisiteDto;
 import de.htw.studyplanner.backend.exception.NotFoundException;
 import de.htw.studyplanner.backend.model.Modul;
@@ -39,17 +40,21 @@ public class ModuleService {
 
     private final ModulRepository modulRepository;
     private final VoraussetzungRepository voraussetzungRepository;
+    private final OfferService offerService;
 
     /**
      * Erstellt den Service.
      *
-     * @param modulRepository       Zugriff auf die Module
+     * @param modulRepository         Zugriff auf die Module
      * @param voraussetzungRepository Zugriff auf die Voraussetzungen
+     * @param offerService            weiß, welche Wahlangebote zu welchem Modul passen
      */
     public ModuleService(ModulRepository modulRepository,
-            VoraussetzungRepository voraussetzungRepository) {
+            VoraussetzungRepository voraussetzungRepository,
+            OfferService offerService) {
         this.modulRepository = modulRepository;
         this.voraussetzungRepository = voraussetzungRepository;
+        this.offerService = offerService;
     }
 
     /**
@@ -102,7 +107,12 @@ public class ModuleService {
                                 Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
 
-        return ModuleDetailDto.of(modul, voraussetzungen);
+        // Dieselbe Regel, mit der die Leistungen ein gewähltes Angebot prüfen (OfferService).
+        List<OfferDto> angebote = offerService.passendeAngebote(modul).stream()
+                .map(OfferDto::of)
+                .toList();
+
+        return ModuleDetailDto.of(modul, voraussetzungen, angebote);
     }
 
     private static PrerequisiteDto toDto(Voraussetzung v) {
