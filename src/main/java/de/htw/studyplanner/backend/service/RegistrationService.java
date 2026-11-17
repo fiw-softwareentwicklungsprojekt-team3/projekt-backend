@@ -1,8 +1,5 @@
 package de.htw.studyplanner.backend.service;
 
-import java.util.Locale;
-
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,46 +10,46 @@ import de.htw.studyplanner.backend.model.Nutzende;
 import de.htw.studyplanner.backend.model.Rolle;
 import de.htw.studyplanner.backend.model.Semester;
 import de.htw.studyplanner.backend.model.Studierende;
-import de.htw.studyplanner.backend.repository.NutzendeRepository;
 import de.htw.studyplanner.backend.repository.StudierendeRepository;
 
 /**
- * Legt neue Studierende an: Konto in {@code nutzende}, Eintrag in {@code studierende}
- * und, falls nötig, das Startsemester in {@code semester}.
+ * Legt neue Studierende an: Konto in {@code nutzende} (über {@link KontoService}),
+ * Eintrag in {@code studierende} und, falls nötig, das Startsemester in {@code semester}.
  */
 @Service
 public class RegistrationService {
 
-    private final NutzendeRepository nutzendeRepository;
+    private final KontoService kontoService;
     private final StudierendeRepository studierendeRepository;
     private final SemesterService semesterService;
-    private final PasswordEncoder passwordEncoder;
 
     /**
      * Erstellt den Service.
      *
-     * @param nutzendeRepository    Zugriff auf die Konten
+     * @param kontoService          legt das Konto an (gemeinsam mit der Professor:innen-Registrierung)
      * @param studierendeRepository Zugriff auf die Studierenden-Einträge
      * @param semesterService       Zugriff auf die Semester
-     * @param passwordEncoder       erzeugt den Passwort-Hash (BCrypt)
      */
     public RegistrationService(
-            NutzendeRepository nutzendeRepository,
+            KontoService kontoService,
             StudierendeRepository studierendeRepository,
-            SemesterService semesterService,
-            PasswordEncoder passwordEncoder) {
-        this.nutzendeRepository = nutzendeRepository;
+            SemesterService semesterService) {
+        this.kontoService = kontoService;
         this.studierendeRepository = studierendeRepository;
         this.semesterService = semesterService;
-        this.passwordEncoder = passwordEncoder;
     }
 
     /**
      * Registriert eine neue Person mit der Rolle STUDIERENDE.
      *
-     * <p>Gespeichert wird nur der BCrypt-Hash des Passworts. Gibt es das Startsemester
-     * noch nicht in der Tabelle {@code semester}, wird es angelegt. Alles passiert in
-     * einer Transaktion: schlägt ein Schritt fehl, wird nichts gespeichert.
+     * <p>Die Rolle ist hier fest eingetragen. Über diesen Weg entsteht nie ein Konto
+     * mit einer anderen Rolle, auch wenn der Request ein Feld {@code rolle} oder
+     * {@code code} mitschickt. Professor:innen registrieren sich über
+     * {@link ProfessorRegistrationService}.
+     *
+     * <p>Gibt es das Startsemester noch nicht in der Tabelle {@code semester}, wird es
+     * angelegt. Alles passiert in einer Transaktion: schlägt ein Schritt fehl, wird
+     * nichts gespeichert.
      *
      * @param request bereits validierte Eingaben; startsemester hat das Format "WS JJJJ"
      * @return die angelegte Person ohne Passwort
@@ -60,31 +57,18 @@ public class RegistrationService {
      */
     @Transactional
     public RegisterResponse register(RegisterRequest request) {
-
-        // E-Mail wird in Kleinbuchstaben gespeichert und gesucht.
-        String email = request.email().toLowerCase(Locale.ROOT);
-        // Die E-Mail muss eindeutig sein, sonst Konflikt (409).
-        if (nutzendeRepository.findByEmail(email).isPresent()) {
-            throw new ConflictException("Diese E-Mail-Adresse ist bereits vergeben.");
-        }
+        // Die E-Mail muss eindeutig sein, sonst Konflikt (409). Klein geschrieben wird sie im KontoService.
+        kontoService.pruefeEmailFrei(request.email());
 
         // Feldname wie im Request, damit errors[].field "startsemester" heißt (wie beim @Pattern-Fehler).
         Semester parsed = semesterService.parse(request.startsemester(), "startsemester");
+
+        Nutzende nutzende = kontoService.legeKontoAn(
+                request.email(), request.password(), Rolle.STUDIERENDE);
+
         Semester semester = semesterService.findenOderNeuAnlegen(parsed.getJahr(), parsed.getArt());
 
-        String passwortHash = passwordEncoder.encode(request.password());
-
-        // Die Rolle wird immer vom Backend gesetzt.
-        Nutzende nutzende = nutzendeRepository.save(
-                new Nutzende(
-                        email,
-                        passwortHash,
-                        Rolle.STUDIERENDE
-                ));
-
-        studierendeRepository.save(
-                new Studierende(nutzende, semester)
-        );
+        studierendeRepository.save(new Studierende(nutzende, semester));
 
         return new RegisterResponse(
                 nutzende.getNutzendeId(),

@@ -60,6 +60,8 @@ docker compose up -d
 
 Details, HTW-Server und Regeln für Migrationen: [docs/datenbank.md](docs/datenbank.md)
 
+Einladungscodes für Professor:innen anlegen: [docs/einladungscodes.md](docs/einladungscodes.md)
+
 ## Testabdeckung
 
 Die Testabdeckung wird mit JaCoCo geprüft. Für das Projekt gilt eine
