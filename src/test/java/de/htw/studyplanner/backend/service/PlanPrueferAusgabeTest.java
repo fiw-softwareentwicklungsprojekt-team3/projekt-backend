@@ -10,12 +10,15 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import de.htw.studyplanner.backend.dto.PlanVerstoss;
 import de.htw.studyplanner.backend.dto.PruefSchwere;
 import de.htw.studyplanner.backend.model.Leistung;
 import de.htw.studyplanner.backend.model.Modul;
+import de.htw.studyplanner.backend.model.Nutzende;
 import de.htw.studyplanner.backend.model.PlanEintrag;
+import de.htw.studyplanner.backend.model.Rolle;
 import de.htw.studyplanner.backend.model.Semester;
 import de.htw.studyplanner.backend.model.SemesterArt;
 import de.htw.studyplanner.backend.model.Status;
@@ -39,7 +42,9 @@ class PlanPrueferAusgabeTest {
     private final PlanPruefer planPruefer = new PlanPruefer(
             planEintragRepository, leistungRepository, voraussetzungRepository, semesterService);
 
-    private final Studierende studierende = mock(Studierende.class);
+    private final Studierende studierende = new Studierende(
+            new Nutzende("test@student.htw-berlin.de", "hash", Rolle.STUDIERENDE),
+            new Semester(2026, SemesterArt.WS));
     private final Modul b11 = modul("B11");
     private final Modul b34 = modul("B34");
 
@@ -136,20 +141,33 @@ class PlanPrueferAusgabeTest {
     }
 
     private static Modul modul(String code) {
-        Modul m = mock(Modul.class);
-        when(m.getCode()).thenReturn(code);
-        return m;
+        return instanziieren(Modul.class, modul -> {
+            ReflectionTestUtils.setField(modul, "code", code);
+        });
     }
 
     private static Voraussetzung voraussetzung(
             Modul modul, Modul vorausgesetzt, VoraussetzungsArt art, boolean gleichesSemester) {
-        Voraussetzung v = mock(Voraussetzung.class);
-        when(v.getModul()).thenReturn(modul);
-        when(v.getVorausgesetztesModul()).thenReturn(vorausgesetzt);
-        when(v.getArt()).thenReturn(art);
-        when(v.isGleichesSemester()).thenReturn(gleichesSemester);
-        when(v.getMinLp()).thenReturn(null);
-        return v;
+        return instanziieren(Voraussetzung.class, voraussetzung -> {
+            ReflectionTestUtils.setField(voraussetzung, "modul", modul);
+            ReflectionTestUtils.setField(voraussetzung, "vorausgesetztesModul", vorausgesetzt);
+            ReflectionTestUtils.setField(voraussetzung, "art", art);
+            ReflectionTestUtils.setField(voraussetzung, "gleichesSemester", gleichesSemester);
+            ReflectionTestUtils.setField(voraussetzung, "minLp", null);
+        });
+    }
+
+    private static <T> T instanziieren(Class<T> type, java.util.function.Consumer<T> initializer) {
+        try {
+            java.lang.reflect.Constructor<T> konstruktor =
+                    type.getDeclaredConstructor();
+            konstruktor.setAccessible(true);
+            T objekt = konstruktor.newInstance();
+            initializer.accept(objekt);
+            return objekt;
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError(ex);
+        }
     }
 
     private Leistung leistung(Modul modul, Status status, Semester semester) {

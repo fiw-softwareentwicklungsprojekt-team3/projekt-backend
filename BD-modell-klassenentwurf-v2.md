@@ -335,6 +335,8 @@ Entscheidend ist also das Ergebnis, nicht das Datum:
 | `NICHT_BESTANDEN` | **Fehler** |
 | weder bestanden noch früher geplant | **Fehler** |
 
+Ist ein Modul `NICHT_BESTANDEN`, zählt es als Voraussetzung nicht erfüllt. Wird es danach in einem späteren Semester erneut geplant (`plan_eintrag.semester > leistung.semester`), zählt diese neue Planung wieder als geplant.
+
 **Warum nicht „nur zukünftige oder laufende Semester zählen“?** Noten kommen oft erst Wochen nach Beginn des nächsten Semesters. Der 2. Prüfungszeitraum reicht bis in die erste Vorlesungswoche des Folgesemesters (RStPO §16 Abs. 5), und Noten müssen erst bis zu drei Wochen danach bekannt gegeben werden (RStPO §17 Abs. 7). Würden vergangene Semester nicht mehr zählen, wäre der Plan in dieser Zeit fälschlich ungültig, obwohl die Note einfach noch fehlt. Die StuPO verbietet auch nicht, das nächste Semester vor den Noten zu planen.
 
 So bleibt Vorausplanen möglich, und eine bekannte durchgefallene Prüfung blockiert trotzdem sofort. Dieselbe Regel gilt für LP-Voraussetzungen: gezählt werden bestandene LP plus LP aus Modulen, die in früheren Semestern geplant und nicht als `NICHT_BESTANDEN` eingetragen sind.
@@ -586,7 +588,7 @@ classDiagram
     PlanPruefer ..> Verstoss
 ```
 
-`Schwere` hat die Werte `FEHLER` (notwendig, oder LP unter `min_lp − toleranz_lp`) und `WARNUNG` (empfohlen, oder LP im Toleranzbereich). Der Name `PlanPruefer` ist ein Vorschlag für die Klasse, die Pläne gegen die Voraussetzungen prüft.
+`Schwere` hat die Werte `FEHLER` (notwendig, oder LP unter `min_lp − toleranz_lp`) und `WARNUNG` (empfohlen, oder LP im Toleranzbereich). Zusätzlich gibt es `HINWEIS` für ein vorausgesetztes Modul, das in einem vergangenen Semester geplant ist, für das aber noch kein Ergebnis vorliegt („Ergebnis ausstehend“). Der Name `PlanPruefer` ist ein Vorschlag für die Klasse, die Pläne gegen die Voraussetzungen prüft.
 
 ## 8. Entscheidungen
 

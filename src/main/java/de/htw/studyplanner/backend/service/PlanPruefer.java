@@ -143,14 +143,14 @@ public class PlanPruefer {
                         geplanterEintrag,
                         gleicheSemesterErlaubt)) {
 
-            boolean offenGeplant = vorausgesetzteLeistung == null
-                    || vorausgesetzteLeistung.getStatus() == Status.BELEGT
-                    || (vorausgesetzteLeistung.getStatus() == Status.NICHT_BESTANDEN
-                            && istNachDurchgefallenNeuGeplant(
-                                    vorausgesetzteLeistung,
-                                    vorausgesetzterPlan));
-
-            if (offenGeplant) {
+            if (vorausgesetzteLeistung != null
+                    && vorausgesetzteLeistung.getStatus() == Status.NICHT_BESTANDEN) {
+                if (istNachDurchgefallenNeuGeplant(
+                        vorausgesetzteLeistung,
+                        vorausgesetzterPlan)) {
+                    return null;
+                }
+            } else {
                 if (semesterService.istVorbei(vorausgesetzterPlan.getSemester(), heute)) {
                     return new PlanVerstoss(
                             PruefSchwere.HINWEIS,
