@@ -100,7 +100,8 @@ public class PlanPruefer {
                         geplanterEintrag,
                         voraussetzung,
                         planNachModul,
-                        leistungNachModul);
+                        leistungNachModul,
+                        heute);
 
                 if (verstoss != null) {
                     verstosse.add(verstoss);
@@ -115,7 +116,8 @@ public class PlanPruefer {
             PlanEintrag geplanterEintrag,
             Voraussetzung voraussetzung,
             Map<String, PlanEintrag> planNachModul,
-            Map<String, Leistung> leistungNachModul) {
+            Map<String, Leistung> leistungNachModul,
+            LocalDate heute) {
 
         String geprueftesModul = geplanterEintrag.getModul().getCode();
         String vorausgesetztesModul =
@@ -141,19 +143,21 @@ public class PlanPruefer {
                         geplanterEintrag,
                         gleicheSemesterErlaubt)) {
 
-            if (vorausgesetzteLeistung == null
-                    || vorausgesetzteLeistung.getStatus() == Status.BELEGT) {
-                return new PlanVerstoss(
-                        PruefSchwere.HINWEIS,
-                        geprueftesModul,
-                        vorausgesetztesModul,
-                        "Ergebnis ausstehend");
-            }
+            boolean offenGeplant = vorausgesetzteLeistung == null
+                    || vorausgesetzteLeistung.getStatus() == Status.BELEGT
+                    || (vorausgesetzteLeistung.getStatus() == Status.NICHT_BESTANDEN
+                            && istNachDurchgefallenNeuGeplant(
+                                    vorausgesetzteLeistung,
+                                    vorausgesetzterPlan));
 
-            if (vorausgesetzteLeistung.getStatus() == Status.NICHT_BESTANDEN
-                    && istNachDurchgefallenNeuGeplant(
-                            vorausgesetzteLeistung,
-                            vorausgesetzterPlan)) {
+            if (offenGeplant) {
+                if (semesterService.istVorbei(vorausgesetzterPlan.getSemester(), heute)) {
+                    return new PlanVerstoss(
+                            PruefSchwere.HINWEIS,
+                            geprueftesModul,
+                            vorausgesetztesModul,
+                            "Ergebnis ausstehend");
+                }
                 return null;
             }
         }
