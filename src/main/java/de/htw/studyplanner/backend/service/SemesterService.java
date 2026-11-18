@@ -20,7 +20,6 @@ import de.htw.studyplanner.backend.repository.SemesterRepository;
 public class SemesterService {
 
     private static final Pattern SEMESTER_PATTERN = Pattern.compile("^(WS|SS) (\\d{4})$");
-
     /** Kleinstes erlaubtes Jahr, wie der CHECK auf semester.jahr in V1. */
     static final int MIN_JAHR = 2000;
     /** Größtes erlaubtes Jahr, wie der CHECK auf semester.jahr in V1. */
@@ -127,7 +126,6 @@ public class SemesterService {
         // matcher.group(1) = SemesterArt (WS oder SS), matcher.group(2) = Jahr (JJJJ)
         SemesterArt art = SemesterArt.valueOf(matcher.group(1));
         int jahr = Integer.parseInt(matcher.group(2));
-
         validateJahr(jahr, feld);
         return new Semester(jahr, art);
     }
@@ -183,4 +181,3 @@ public class SemesterService {
                 .orElseGet(() -> semesterRepository.save(new Semester(jahr, art)));
     }
 }
-
