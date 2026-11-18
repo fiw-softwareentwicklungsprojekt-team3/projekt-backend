@@ -176,16 +176,8 @@ public class SemesterService {
      * @return die persistierte {@link Semester}-Entität
      */
     @Transactional
-    public Semester findeOderLege(int jahr, SemesterArt art) {
+    public Semester findenOderNeuAnlegen(int jahr, SemesterArt art) {
         return semesterRepository.findByJahrAndArt(jahr, art)
                 .orElseGet(() -> semesterRepository.save(new Semester(jahr, art)));
-    }
-
-    /**
-     * Rückwärtskompatibler Alias für bestehende Aufrufer.
-     */
-    @Transactional
-    public Semester findenOderNeuAnlegen(int jahr, SemesterArt art) {
-        return findeOderLege(jahr, art);
     }
 }
