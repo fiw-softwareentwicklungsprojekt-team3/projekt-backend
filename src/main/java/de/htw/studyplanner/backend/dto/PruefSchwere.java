@@ -1,7 +1,7 @@
 package de.htw.studyplanner.backend.dto;
 
 /**
- * Schweregrad eines Versto�es im Studienplan.
+ * Schweregrad eines Verstoßes im Studienplan.
  */
 public enum PruefSchwere {
     FEHLER,
