@@ -39,9 +39,9 @@ public class PlanQueryService {
     }
 
     /**
-     * Liefert den Plan der angemeldeten Person mit aktuellen Verst��en.
+     * Liefert den Plan der angemeldeten Person mit aktuellen Verstößen.
      *
-     * @return Planeintr�ge mit Voraussetzungen und Verst��en
+     * @return Planeinträge mit Voraussetzungen und Verstößen
      */
     @Transactional(readOnly = true)
     public List<PlanEntryPlanResponse> eigenerPlan() {
