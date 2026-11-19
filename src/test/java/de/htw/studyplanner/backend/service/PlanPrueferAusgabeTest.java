@@ -47,6 +47,9 @@ class PlanPrueferAusgabeTest {
             new Semester(2026, SemesterArt.WS));
     private final Modul b11 = modul("B11");
     private final Modul b34 = modul("B34");
+    private final Modul b43 = modul("B43");
+    private final Modul b65 = modul("B65");
+    private final Modul b66 = modul("B66");
 
     private final Semester ws2025 = new Semester(2025, SemesterArt.WS);
     private final Semester ws2026 = new Semester(2026, SemesterArt.WS);
@@ -140,6 +143,116 @@ class PlanPrueferAusgabeTest {
         verify(voraussetzungRepository).findAll();
     }
 
+    @Test
+    void lp_genauMinLp_inOrdnung() {
+        List<PlanVerstoss> verstoesse = pruefeMitLp(
+                lpVoraussetzung(b43, VoraussetzungsArt.NOTWENDIG, 60, 0),
+                List.of(new PlanEintrag(studierende, b43, ws2027)),
+                List.of(leistung(modul("F1", 60), Status.BESTANDEN, ws2025)));
+
+        assertThat(verstoesse).isEmpty();
+    }
+
+    @Test
+    void lp_einsDarunter_fehlerMitIstUndSoll() {
+        List<PlanVerstoss> verstoesse = pruefeMitLp(
+                lpVoraussetzung(b43, VoraussetzungsArt.NOTWENDIG, 60, 0),
+                List.of(new PlanEintrag(studierende, b43, ws2027)),
+                List.of(leistung(modul("F1", 59), Status.BESTANDEN, ws2025)));
+
+        assertThat(verstoesse).hasSize(1);
+        assertThat(verstoesse.get(0).schwere()).isEqualTo(PruefSchwere.FEHLER);
+        assertThat(verstoesse.get(0).fehlendeVoraussetzung()).isNull();
+        assertThat(verstoesse.get(0).meldung())
+                .isEqualTo("B43 braucht 60 LP, bis dahin sind 59 LP erreicht oder geplant");
+    }
+
+    @Test
+    void lp_toleranzGrenze141_warnung() {
+        List<PlanVerstoss> verstoesse = pruefeMitLp(
+                lpVoraussetzung(b66, VoraussetzungsArt.NOTWENDIG, 151, 10),
+                List.of(new PlanEintrag(studierende, b66, ws2027)),
+                List.of(leistung(modul("F1", 141), Status.BESTANDEN, ws2025)));
+
+        assertThat(verstoesse).hasSize(1);
+        assertThat(verstoesse.get(0).schwere()).isEqualTo(PruefSchwere.WARNUNG);
+        assertThat(verstoesse.get(0).meldung()).contains("Prüfungsausschuss");
+    }
+
+    @Test
+    void lp_toleranzGrenze140_fehler() {
+        List<PlanVerstoss> verstoesse = pruefeMitLp(
+                lpVoraussetzung(b66, VoraussetzungsArt.NOTWENDIG, 151, 10),
+                List.of(new PlanEintrag(studierende, b66, ws2027)),
+                List.of(leistung(modul("F1", 140), Status.BESTANDEN, ws2025)));
+
+        assertThat(verstoesse).hasSize(1);
+        assertThat(verstoesse.get(0).schwere()).isEqualTo(PruefSchwere.FEHLER);
+    }
+
+    @Test
+    void lp_empfohlen_nurWarnung() {
+        List<PlanVerstoss> verstoesse = pruefeMitLp(
+                lpVoraussetzung(b43, VoraussetzungsArt.EMPFOHLEN, 60, 0),
+                List.of(new PlanEintrag(studierende, b43, ws2027)),
+                List.of(leistung(modul("F1", 59), Status.BESTANDEN, ws2025)));
+
+        assertThat(verstoesse).hasSize(1);
+        assertThat(verstoesse.get(0).schwere()).isEqualTo(PruefSchwere.WARNUNG);
+    }
+
+    @Test
+    void lp_durchgefallenesModulZaehltNicht() {
+        Modul durchgefallen = modul("F1", 60);
+
+        List<PlanVerstoss> verstoesse = pruefeMitLp(
+                lpVoraussetzung(b43, VoraussetzungsArt.NOTWENDIG, 60, 0),
+                List.of(new PlanEintrag(studierende, durchgefallen, ws2025),
+                        new PlanEintrag(studierende, b43, ws2027)),
+                List.of(leistung(durchgefallen, Status.NICHT_BESTANDEN, ws2025)));
+
+        assertThat(verstoesse).hasSize(1);
+        assertThat(verstoesse.get(0).meldung())
+                .isEqualTo("B43 braucht 60 LP, bis dahin sind 0 LP erreicht oder geplant");
+    }
+
+    @Test
+    void lp_gleichesSemesterZaehltNicht() {
+        List<PlanVerstoss> verstoesse = pruefeMitLp(
+                lpVoraussetzung(b43, VoraussetzungsArt.NOTWENDIG, 60, 0),
+                List.of(new PlanEintrag(studierende, modul("F1", 60), ws2027),
+                        new PlanEintrag(studierende, b43, ws2027)),
+                List.of());
+
+        assertThat(verstoesse).hasSize(1);
+        assertThat(verstoesse.get(0).schwere()).isEqualTo(PruefSchwere.FEHLER);
+    }
+
+    @Test
+    void lp_modulZaehltNurEinmal() {
+        Modul f1 = modul("F1", 60);
+
+        List<PlanVerstoss> verstoesse = pruefeMitLp(
+                lpVoraussetzung(b43, VoraussetzungsArt.NOTWENDIG, 61, 0),
+                List.of(new PlanEintrag(studierende, f1, ws2025),
+                        new PlanEintrag(studierende, b43, ws2027)),
+                List.of(leistung(f1, Status.BESTANDEN, ws2025)));
+
+        assertThat(verstoesse).hasSize(1);
+        assertThat(verstoesse.get(0).meldung())
+                .isEqualTo("B43 braucht 61 LP, bis dahin sind 60 LP erreicht oder geplant");
+    }
+
+    @Test
+    void lp_b65Mit177_inOrdnung() {
+        List<PlanVerstoss> verstoesse = pruefeMitLp(
+                lpVoraussetzung(b65, VoraussetzungsArt.NOTWENDIG, 177, 0),
+                List.of(new PlanEintrag(studierende, b65, ws2027)),
+                List.of(leistung(modul("F1", 177), Status.BESTANDEN, ws2025)));
+
+        assertThat(verstoesse).isEmpty();
+    }
+
     private static Modul modul(String code) {
         return instanziieren(Modul.class, modul -> {
             ReflectionTestUtils.setField(modul, "code", code);
@@ -174,5 +287,30 @@ class PlanPrueferAusgabeTest {
         Leistung l = new Leistung(studierende, modul, status);
         l.setSemester(semester);
         return l;
+    }
+
+    private static Modul modul(String code, int lp) {
+        return instanziieren(Modul.class, modul -> {
+            ReflectionTestUtils.setField(modul, "code", code);
+            ReflectionTestUtils.setField(modul, "lp", lp);
+        });
+    }
+
+    private static Voraussetzung lpVoraussetzung(
+            Modul modul, VoraussetzungsArt art, int minLp, int toleranzLp) {
+        return instanziieren(Voraussetzung.class, voraussetzung -> {
+            ReflectionTestUtils.setField(voraussetzung, "modul", modul);
+            ReflectionTestUtils.setField(voraussetzung, "art", art);
+            ReflectionTestUtils.setField(voraussetzung, "minLp", minLp);
+            ReflectionTestUtils.setField(voraussetzung, "toleranzLp", toleranzLp);
+        });
+    }
+
+    private List<PlanVerstoss> pruefeMitLp(
+            Voraussetzung voraussetzung, List<PlanEintrag> plan, List<Leistung> leistungen) {
+        when(voraussetzungRepository.findAll()).thenReturn(List.of(voraussetzung));
+        when(planEintragRepository.findByStudierende(studierende)).thenReturn(plan);
+        when(leistungRepository.findByStudierende(studierende)).thenReturn(leistungen);
+        return planPruefer.pruefe(studierende, HEUTE_WS_2026);
     }
 }
