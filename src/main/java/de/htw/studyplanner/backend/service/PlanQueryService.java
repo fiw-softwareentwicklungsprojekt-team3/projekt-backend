@@ -81,7 +81,7 @@ public class PlanQueryService {
 
         boolean prerequisitesMet = verstoesse.stream()
                 .noneMatch(verstoss ->
-                        verstoss.schwere().name().equals("FEHLER"));
+                        verstoss.schwere() == PruefSchwere.FEHLER);
 
         return new PlanEntryPlanResponse(
                 eintrag.getPlanEintragId(),
