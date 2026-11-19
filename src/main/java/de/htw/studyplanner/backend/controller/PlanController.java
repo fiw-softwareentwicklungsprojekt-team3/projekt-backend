@@ -1,6 +1,8 @@
 package de.htw.studyplanner.backend.controller;
 
+import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -8,8 +10,10 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import de.htw.studyplanner.backend.dto.ApiError;
+import de.htw.studyplanner.backend.dto.PlanEntryPlanResponse;
 import de.htw.studyplanner.backend.dto.PlanEntryRequest;
 import de.htw.studyplanner.backend.dto.PlanEntryResponse;
+import de.htw.studyplanner.backend.service.PlanQueryService;
 import de.htw.studyplanner.backend.service.PlanService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -34,14 +38,19 @@ import jakarta.validation.Valid;
 public class PlanController {
 
     private final PlanService planService;
+    private final PlanQueryService planQueryService;
 
     /**
      * Erstellt den Controller.
      *
-     * @param planService Service mit den Regeln für den Studienplan
+     * @param planService      Service mit den Regeln für den Studienplan
+     * @param planQueryService Service zum Laden des Plans inklusive Verstößen
      */
-    public PlanController(PlanService planService) {
+    public PlanController(
+            PlanService planService,
+            PlanQueryService planQueryService) {
         this.planService = planService;
+        this.planQueryService = planQueryService;
     }
 
     /**
@@ -179,5 +188,45 @@ public class PlanController {
                             }""")))
     public PlanEntryResponse createEntry(@Valid @RequestBody PlanEntryRequest request) {
         return planService.eintragAnlegen(request);
+    }
+
+    /**
+     * Liefert den vollständigen Plan inklusive aktueller Verstöße.
+     *
+     * @return Plan mit Voraussetzungen und Verstößen
+     */
+    @GetMapping
+    @Operation(
+            summary = "Studienplan mit Voraussetzungen anzeigen",
+            description = "Liefert jeden Planeintrag mit prerequisitesMet und violations.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Plan wurde geladen",
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(name = "Planeintrag mit Verstoß", value = """
+                            [
+                              {
+                                "id": 1,
+                                "moduleCode": "B34",
+                                "semester": "WS 2027",
+                                "offerCode": null,
+                                "courseCode": null,
+                                "courseTitle": null,
+                                "prerequisitesMet": false,
+                                "violations": [
+                                  {
+                                    "severity": "FEHLER",
+                                    "prerequisiteCode": "B11",
+                                    "message": "Voraussetzung B11 für B34 ist nicht erfüllt."
+                                  }
+                                ]
+                              }
+                            ]
+                            """)))
+    @ApiResponse(responseCode = "401", description = "Kein oder ungültiges Token", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Nur für Studierende", content = @Content)
+    public List<PlanEntryPlanResponse> getPlan() {
+        return planQueryService.eigenerPlan();
     }
 }

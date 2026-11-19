@@ -2,6 +2,9 @@ package de.htw.studyplanner.backend.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsStringIgnoringCase;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -32,7 +35,8 @@ import de.htw.studyplanner.backend.repository.StudierendeRepository;
 import de.htw.studyplanner.backend.security.JwtService;
 
 /**
- * Integrationstests für {@code POST /api/plan/entries}: ein Test pro Regel aus dem Ticket.
+ * Integrationstests für die Plan-API ({@code POST /api/plan/entries} und {@code GET /api/plan}):
+ * ein Test pro Regel aus dem Ticket.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -78,6 +82,11 @@ class PlanApiTest {
                 .header("Authorization", token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json));
+    }
+
+    private ResultActions getPlan(String token) throws Exception {
+        return mockMvc.perform(get("/api/plan")
+                .header("Authorization", token));
     }
 
     @Test
@@ -422,5 +431,59 @@ class PlanApiTest {
                 }""")
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.semester").value("WS 2028"));
+    }
+
+    @Test
+    void b34OhneB11HatFehler_mitB11InFrueheremSemesterFehlerWeg() throws Exception {
+        String token = neueStudierende();
+
+        // 1. B34 für WS 2027 ohne B11 einplanen
+        postEntry(token, """
+                {
+                  "moduleCode": "B34",
+                  "semester": "WS 2027",
+                  "offerCode": null,
+                  "courseCode": null,
+                  "courseTitle": null
+                }""")
+                .andExpect(status().isCreated());
+
+        // 2. GET /api/plan aufrufen: B34 hat prerequisitesMet = false und FEHLER für B11
+        getPlan(token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].moduleCode").value("B34"))
+                .andExpect(jsonPath("$[0].prerequisitesMet").value(false))
+                .andExpect(jsonPath("$[0].violations[?(@.prerequisiteCode == 'B11')].severity")
+                        .value(hasItem("FEHLER")))
+                .andExpect(jsonPath("$[0].violations[?(@.prerequisiteCode == 'B11')].message")
+                        .value(hasItem("Voraussetzung B11 für B34 ist nicht erfüllt.")));
+
+        // 3. B11 in ein früheres Semester (WS 2026) einplanen
+        postEntry(token, """
+                {
+                  "moduleCode": "B11",
+                  "semester": "WS 2026",
+                  "offerCode": null,
+                  "courseCode": null,
+                  "courseTitle": null
+                }""")
+                .andExpect(status().isCreated());
+
+        // 4. GET /api/plan erneut aufrufen: FEHLER für B11 verschwunden, prerequisitesMet bei B34 jetzt true
+        // (empfohlene Voraussetzungen B21 und B24 bleiben als WARNUNG in violations erhalten)
+        getPlan(token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[?(@.moduleCode == 'B34')].prerequisitesMet")
+                        .value(hasItem(true)))
+                .andExpect(jsonPath("$[?(@.moduleCode == 'B34')].violations[?(@.prerequisiteCode == 'B11')]")
+                        .isEmpty())
+                .andExpect(jsonPath("$[?(@.moduleCode == 'B34')].violations[?(@.severity == 'FEHLER')]")
+                        .isEmpty())
+                .andExpect(jsonPath("$[?(@.moduleCode == 'B34')].violations[?(@.prerequisiteCode == 'B21')].severity")
+                        .value(hasItem("WARNUNG")))
+                .andExpect(jsonPath("$[?(@.moduleCode == 'B34')].violations[?(@.prerequisiteCode == 'B24')].severity")
+                        .value(hasItem("WARNUNG")));
     }
 }

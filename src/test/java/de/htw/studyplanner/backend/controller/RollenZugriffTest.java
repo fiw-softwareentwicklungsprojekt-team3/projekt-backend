@@ -47,8 +47,8 @@ class RollenZugriffTest {
     }
 
     @Test
-    void studierendeKommenAufPlanDurch() throws Exception {
-        assertDurchgekommen("/api/plan", Rolle.STUDIERENDE);
+    void studierendeSindAufPlanNichtVerboten() throws Exception {
+        assertThat(statusVon("/api/plan", Rolle.STUDIERENDE)).isNotEqualTo(403);
     }
 
     @Test
