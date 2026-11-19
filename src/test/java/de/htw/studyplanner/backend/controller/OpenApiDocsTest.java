@@ -38,6 +38,9 @@ class OpenApiDocsTest {
                         + ".content['application/json'].examples").exists())
                 .andExpect(jsonPath("$.paths['/api/modules'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/modules/{code}'].get").exists())
+                .andExpect(jsonPath("$.paths['/api/offers'].get").exists())
+                .andExpect(jsonPath("$.components.schemas.ModuleDetailDto.properties.offers").exists())
+                .andExpect(jsonPath("$.components.schemas.OfferDto.properties.recommendedModuleCode").exists())
                 .andExpect(jsonPath("$.paths['/api/me'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/plan/entries'].post").exists());
     }
