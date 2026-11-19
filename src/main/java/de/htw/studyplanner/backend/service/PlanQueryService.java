@@ -20,7 +20,7 @@ import de.htw.studyplanner.backend.security.AktuellePerson;
 import de.htw.studyplanner.backend.exception.UnauthorizedException;
 
 /**
- * Liefert den Studienplan mit aktuell berechneten Verst��en.
+ * Liefert den Studienplan mit aktuell berechneten Verstößen.
  */
 @Service
 public class PlanQueryService {
