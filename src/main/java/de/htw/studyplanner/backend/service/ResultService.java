@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import org.springframework.stereotype.Service;
@@ -15,7 +14,6 @@ import de.htw.studyplanner.backend.dto.ResultResponse;
 import de.htw.studyplanner.backend.exception.FieldValidationException;
 import de.htw.studyplanner.backend.exception.NotFoundException;
 import de.htw.studyplanner.backend.exception.UnauthorizedException;
-import de.htw.studyplanner.backend.model.AngebotsGruppe;
 import de.htw.studyplanner.backend.model.Leistung;
 import de.htw.studyplanner.backend.model.Modul;
 import de.htw.studyplanner.backend.model.Semester;
@@ -57,10 +55,6 @@ public class ResultService {
     private static final int MIN_VERSUCH = 1;
     private static final int MAX_VERSUCH = 4;
 
-    /** Module, bei denen ein Wahlangebot gewählt werden muss. */
-    private static final Set<String> MODULE_MIT_WP_ANGEBOT = Set.of("B41", "B54");
-    private static final Set<String> MODULE_MIT_SPRACHANGEBOT = Set.of("B16", "B26");
-
     /** AWE-Module ohne Angebotsliste: Veranstaltung wird frei eingetragen (E10). */
     private static final Set<String> AWE_MODULE_MIT_KURS = Set.of("B63", "B64");
 
@@ -69,6 +63,7 @@ public class ResultService {
     private final ModulRepository modulRepository;
     private final WahlangebotRepository wahlangebotRepository;
     private final SemesterService semesterService;
+    private final OfferService offerService;
 
     /**
      * Erstellt den Service.
@@ -78,17 +73,20 @@ public class ResultService {
      * @param modulRepository       Zugriff auf den Modulkatalog
      * @param wahlangebotRepository Zugriff auf die Wahlangebote
      * @param semesterService       liest Semester-Strings und legt Semester bei Bedarf an
+     * @param offerService          weiß, welche Wahlangebote zu welchem Modul passen
      */
     public ResultService(LeistungRepository leistungRepository,
                          StudierendeRepository studierendeRepository,
                          ModulRepository modulRepository,
                          WahlangebotRepository wahlangebotRepository,
-                         SemesterService semesterService) {
+                         SemesterService semesterService,
+                         OfferService offerService) {
         this.leistungRepository = leistungRepository;
         this.studierendeRepository = studierendeRepository;
         this.modulRepository = modulRepository;
         this.wahlangebotRepository = wahlangebotRepository;
         this.semesterService = semesterService;
+        this.offerService = offerService;
     }
 
     /**
@@ -155,32 +153,6 @@ public class ResultService {
         Modul modul = modulOderFehler(moduleCode);
         leistungRepository.findByStudierendeAndModul(studierende, modul)
                 .ifPresent(leistungRepository::delete);
-    }
-
-    /**
-     * Prüft, ob ein Wahlangebot zum Modul passt.
-     *
-     * <ul>
-     *   <li>B41/B54: Angebot der Gruppe {@code WP}</li>
-     *   <li>B16/B26: Angebot der Gruppe {@code SPRACHE} mit derselben Niveaustufe wie das
-     *       Modul ({@code 1a} bei B16, {@code 1b} bei B26, E26)</li>
-     * </ul>
-     *
-     * <p>Öffentlich, damit der Plan dieselbe Regel verwenden kann.
-     *
-     * @param modul       das Modul
-     * @param wahlangebot das gewählte Angebot
-     * @return true, wenn das Angebot für dieses Modul gewählt werden darf
-     */
-    public boolean angebotPasstZumModul(Modul modul, Wahlangebot wahlangebot) {
-        if (MODULE_MIT_WP_ANGEBOT.contains(modul.getCode())) {
-            return wahlangebot.getGruppe() == AngebotsGruppe.WP;
-        }
-        if (MODULE_MIT_SPRACHANGEBOT.contains(modul.getCode())) {
-            return wahlangebot.getGruppe() == AngebotsGruppe.SPRACHE
-                    && Objects.equals(wahlangebot.getNiveaustufe(), modul.getNiveaustufe());
-        }
-        return false;
     }
 
     // ---------------------------------------------------------------- Regeln
@@ -259,12 +231,13 @@ public class ResultService {
         return semesterService.findenOderNeuAnlegen(gelesen.getJahr(), gelesen.getArt());
     }
 
-    /** B16/B26/B41/B54 brauchen ein passendes Angebot, alle anderen Module keins. */
+    /**
+     * B16/B26/B41/B54 brauchen ein passendes Angebot, alle anderen Module keins.
+     * Welche Angebote passen, entscheidet der {@link OfferService}, damit der
+     * Modulkatalog genau die Angebote anzeigt, die hier akzeptiert werden.
+     */
     private Wahlangebot pruefeWahlangebot(Modul modul, String offerCode) {
-        boolean brauchtAngebot = MODULE_MIT_WP_ANGEBOT.contains(modul.getCode())
-                || MODULE_MIT_SPRACHANGEBOT.contains(modul.getCode());
-
-        if (!brauchtAngebot) {
+        if (!offerService.hatFesteAuswahl(modul)) {
             if (!leer(offerCode)) {
                 throw new FieldValidationException("offerCode",
                         "Für Modul " + modul.getCode() + " gibt es keine Wahlangebote.");
@@ -278,7 +251,7 @@ public class ResultService {
         Wahlangebot wahlangebot = wahlangebotRepository.findById(offerCode.trim())
                 .orElseThrow(() -> new FieldValidationException("offerCode",
                         "Das Wahlangebot " + offerCode + " gibt es nicht."));
-        if (!angebotPasstZumModul(modul, wahlangebot)) {
+        if (!offerService.passtZumModul(modul, wahlangebot)) {
             throw new FieldValidationException("offerCode",
                     "Das Wahlangebot " + wahlangebot.getCode() + " passt nicht zu Modul " + modul.getCode() + ".");
         }

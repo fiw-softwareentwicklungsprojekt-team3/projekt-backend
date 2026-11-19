@@ -292,6 +292,59 @@ class PlanApiTest {
     }
 
     @Test
+    void offerCodeMussZumModulPassen() throws Exception {
+        String token = neueStudierende();
+
+        // EN_B2.2 ist eine 1b-Sprache und gehört zu B26, nicht zu B16
+        postEntry(token, """
+                {
+                  "moduleCode": "B16",
+                  "semester": "WS 2026",
+                  "offerCode": "EN_B2.2",
+                  "courseCode": null,
+                  "courseTitle": null
+                }""")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("offerCode"));
+
+        // Eine Sprache passt nicht zu einem Wahlpflichtmodul
+        postEntry(token, """
+                {
+                  "moduleCode": "B41",
+                  "semester": "SS 2027",
+                  "offerCode": "EN_B2.1",
+                  "courseCode": null,
+                  "courseTitle": null
+                }""")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("offerCode"));
+
+        // B63 hat keine Angebotsliste, nur eine eigene Kursnummer
+        postEntry(token, """
+                {
+                  "moduleCode": "B63",
+                  "semester": "SS 2027",
+                  "offerCode": "WP1",
+                  "courseCode": null,
+                  "courseTitle": null
+                }""")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("offerCode"));
+
+        // Das passende Angebot wird gespeichert
+        postEntry(token, """
+                {
+                  "moduleCode": "B16",
+                  "semester": "WS 2026",
+                  "offerCode": "EN_B2.1",
+                  "courseCode": null,
+                  "courseTitle": null
+                }""")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.offerCode").value("EN_B2.1"));
+    }
+
+    @Test
     void beiAuswahlModulenSindOfferCodeCourseCodeUndCourseTitleOptional() throws Exception {
         String token = neueStudierende();
 

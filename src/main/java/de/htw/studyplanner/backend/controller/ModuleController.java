@@ -85,9 +85,48 @@ public class ModuleController {
      * @return das Modul mit Voraussetzungen
      */
     @GetMapping("/{code}")
-    @Operation(summary = "Ein Modul mit Voraussetzungen abrufen",
-            description = "Notwendige Voraussetzungen stehen vor empfohlenen. LP-Voraussetzungen kommen zuletzt.")
-    @ApiResponse(responseCode = "200", description = "Das Modul mit Voraussetzungen")
+    @Operation(summary = "Ein Modul mit Voraussetzungen und Angeboten abrufen",
+            description = """
+                    Notwendige Voraussetzungen stehen vor empfohlenen. LP-Voraussetzungen kommen zuletzt.
+
+                    `offers` listet die wählbaren Angebote, sortiert nach Code:
+                    B41 und B54 alle Wahlpflicht-Bereiche (Gruppe WP), B16 die Sprachen mit Niveaustufe 1a,
+                    B26 die mit 1b. Bei allen anderen Modulen ist die Liste leer, auch bei B63/B64:
+                    Dort gibt es keine feste Auswahl, nur eine eigene Kursnummer.""")
+    @ApiResponse(responseCode = "200",
+            description = "Das Modul mit Voraussetzungen und wählbaren Angeboten (offers). "
+                    + "offers ist nur bei B16, B26, B41 und B54 gefüllt, sonst leer.",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ModuleDetailDto.class),
+                    examples = @ExampleObject(name = "B16 mit Sprachangeboten (1a)", value = """
+                            {
+                              "code": "B16",
+                              "name": "1. Fremdsprache 1",
+                              "semester": 1,
+                              "type": "P",
+                              "area": "AWE",
+                              "hasChoice": true,
+                              "lp": 4,
+                              "lectureHours": 0,
+                              "exerciseHours": 4,
+                              "level": "1a",
+                              "term": "WS",
+                              "countsForFinalGrade": false,
+                              "graded": true,
+                              "prerequisites": [],
+                              "offers": [
+                                { "code": "DAF_B2.2", "name": "Deutsch als Fremdsprache B2.2 (Technik/Wirtschaft)",
+                                  "group": "SPRACHE", "level": "1a", "sws": 4, "recommendedModuleCode": null },
+                                { "code": "EN_B2.1", "name": "Englisch Fachsprache B2.1 (Technik)",
+                                  "group": "SPRACHE", "level": "1a", "sws": 4, "recommendedModuleCode": null },
+                                { "code": "ES_B1.2", "name": "Spanisch Fachsprache B1.2 (Wirtschaft)",
+                                  "group": "SPRACHE", "level": "1a", "sws": 4, "recommendedModuleCode": null },
+                                { "code": "FR_B1.2", "name": "Französisch Fachsprache B1.2 (Wirtschaft)",
+                                  "group": "SPRACHE", "level": "1a", "sws": 4, "recommendedModuleCode": null },
+                                { "code": "RU_B1.2", "name": "Russisch Fachsprache B1.2 (Wirtschaft)",
+                                  "group": "SPRACHE", "level": "1a", "sws": 4, "recommendedModuleCode": null }
+                              ]
+                            }""")))
     @ApiResponse(responseCode = "404", description = "Es gibt kein Modul mit diesem Code",
             content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = ApiError.class),
