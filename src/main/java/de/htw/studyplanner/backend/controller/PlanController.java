@@ -43,7 +43,8 @@ public class PlanController {
     /**
      * Erstellt den Controller.
      *
-     * @param planService Service mit den Regeln für den Studienplan
+     * @param planService      Service mit den Regeln für den Studienplan
+     * @param planQueryService Service zum Laden des Plans inklusive Verstößen
      */
     public PlanController(
         PlanService planService,
