@@ -89,10 +89,10 @@ public class PlanPruefer {
                 continue;
             }
 
-            List<Voraussetzung> modulVoraussetzungen =
+        List<Voraussetzung> modulVoraussetzungen =
                     voraussetzungenNachModul.getOrDefault(modulCode, List.of());
 
-                for (Voraussetzung voraussetzung : modulVoraussetzungen) {
+        for (Voraussetzung voraussetzung : modulVoraussetzungen) {
                 PlanVerstoss verstoss = null;
 
                 if (voraussetzung.getMinLp() != null) {
@@ -207,7 +207,7 @@ public class PlanPruefer {
                         planEintrag.getSemester());
     }
 
-        /**
+    /**
      * Prüft eine LP-Voraussetzung (min_lp mit toleranz_lp).
      *
      * <p>Ab min_lp ist alles in Ordnung. Zwischen min_lp - toleranz_lp und min_lp - 1
@@ -224,7 +224,11 @@ public class PlanPruefer {
 
         String geprueftesModul = geplanterEintrag.getModul().getCode();
         int soll = voraussetzung.getMinLp();
-        int ist = zaehleLp(geplanterEintrag, planNachModul, leistungNachModul);
+                int ist = zaehleLp(
+                geplanterEintrag,
+                voraussetzung.isGleichesSemester(),
+                planNachModul,
+                leistungNachModul);
 
         if (ist >= soll) {
             return null;
@@ -251,12 +255,15 @@ public class PlanPruefer {
     /**
      * Zählt die LP, die bis zum Semester des geplanten Moduls erreicht oder geplant sind.
      *
-     * <p>Gezählt werden alle bestandenen Module und alle Module, die in einem früheren
-     * Semester geplant sind und nicht durchgefallen sind. Ein durchgefallenes Modul zählt
-     * nur, wenn es nach dem Durchfallen neu geplant wurde. Jedes Modul zählt höchstens einmal.
+     * <p>Gezählt werden alle bestandenen Module und alle geplanten Module, die laut
+     * {@link #darfAlsGeplantZaehlen} zählen dürfen. Mit {@code gleicheSemesterErlaubt}
+     * (E28, z. B. bei B65) zählen auch Module aus demselben Semester. Das geprüfte Modul
+     * zählt nie mit. Ein durchgefallenes Modul zählt nur, wenn es nach dem Durchfallen
+     * neu geplant wurde. Jedes Modul zählt höchstens einmal.
      */
     private int zaehleLp(
             PlanEintrag geplanterEintrag,
+            boolean gleicheSemesterErlaubt,
             Map<String, PlanEintrag> planNachModul,
             Map<String, Leistung> leistungNachModul) {
 
@@ -270,12 +277,15 @@ public class PlanPruefer {
             }
         }
 
+        String geprueftesModul = geplanterEintrag.getModul().getCode();
+
         for (PlanEintrag plan : planNachModul.values()) {
             String code = plan.getModul().getCode();
 
             if (gezaehlt.contains(code)
-                    || !semesterService.istFrueher(
-                            plan.getSemester(), geplanterEintrag.getSemester())) {
+                    || code.equals(geprueftesModul)
+                    || !darfAlsGeplantZaehlen(
+                            plan, geplanterEintrag, gleicheSemesterErlaubt)) {
                 continue;
             }
 
@@ -288,6 +298,7 @@ public class PlanPruefer {
                 summe += plan.getModul().getLp();
             }
         }
+
         return summe;
     }
 
