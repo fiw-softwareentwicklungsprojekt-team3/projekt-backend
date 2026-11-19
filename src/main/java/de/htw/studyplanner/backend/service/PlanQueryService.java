@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import de.htw.studyplanner.backend.dto.PlanEntryPlanResponse;
 import de.htw.studyplanner.backend.dto.PlanViolationResponse;
 import de.htw.studyplanner.backend.dto.PlanVerstoss;
+import de.htw.studyplanner.backend.dto.PruefSchwere;
 import de.htw.studyplanner.backend.model.PlanEintrag;
 import de.htw.studyplanner.backend.model.Studierende;
 import de.htw.studyplanner.backend.repository.PlanEintragRepository;
