@@ -229,6 +229,19 @@ class PlanPrueferAusgabeTest {
     }
 
     @Test
+    void lp_durchgefallenUndNeuGeplant_zaehlt() {
+        Modul f1 = modul("F1", 60);
+
+        List<PlanVerstoss> verstoesse = pruefeMitLp(
+                lpVoraussetzung(b43, VoraussetzungsArt.NOTWENDIG, 60, 0),
+                List.of(new PlanEintrag(studierende, f1, ws2026),
+                        new PlanEintrag(studierende, b43, ws2027)),
+                List.of(leistung(f1, Status.NICHT_BESTANDEN, ws2025)));
+
+        assertThat(verstoesse).isEmpty();
+    }
+
+    @Test
     void lp_modulZaehltNurEinmal() {
         Modul f1 = modul("F1", 60);
 
