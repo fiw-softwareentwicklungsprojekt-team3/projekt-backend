@@ -190,41 +190,42 @@ public class PlanController {
         return planService.eintragAnlegen(request);
     }
     /**
- * Liefert den vollständigen Plan inklusive aktueller Verstöße.
- *
- * @return Plan mit Voraussetzungen und Verstößen
- */
-@GetMapping
-@Operation(
-        summary = "Studienplan mit Voraussetzungen anzeigen",
-        description = "Liefert jeden Planeintrag mit prerequisitesMet und violations.")
-@ApiResponse(
-        responseCode = "200",
-        description = "Plan wurde geladen",
-        content = @Content(
-                mediaType = "application/json",
-                examples = @ExampleObject(value = """
-                        [
-                          {
-                            "id": 1,
-                            "moduleCode": "B34",
-                            "semester": "WS 2027",
-                            "offerCode": null,
-                            "courseCode": null,
-                            "courseTitle": null,
-                            "prerequisitesMet": false,
-                            "violations": [
+     * Liefert den vollständigen Plan inklusive aktueller Verstöße.
+     *
+     * @return Plan mit Voraussetzungen und Verstößen
+     */
+    @GetMapping
+    @Operation(
+            summary = "Studienplan mit Voraussetzungen anzeigen",
+            description = "Liefert jeden Planeintrag mit prerequisitesMet und violations.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Plan wurde geladen",
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(name = "Planeintrag mit Verstoß", value = """
+                            [
                               {
-                                "severity": "FEHLER",
-                                "prerequisiteCode": "B11",
-                                "message": "Voraussetzung B11 für B34 ist nicht erfüllt."
+                                "ID": 1,
+                                "moduleCode": "B34",
+                                "semester": "WS 2027",
+                                "offerCode": null,
+                                "courseCode": null,
+                                "courseTitle": null,
+                                "prerequisitesMet": falsch,
+                                "Verstöße": [
+                                  {
+                                    "Schwere": "FEHLER",
+                                    "prerequisiteCode": "B11",
+                                    "message": "Voraussetzung B11 für B34 ist nicht erfüllt."
+                                  }
+                                ]
                               }
                             ]
-                          }
-                        ]
-                        """)))
-@ApiResponse(responseCode = "401", description = "Kein gültiges Token")
-public List<PlanEntryPlanResponse> getPlan() {
-    return planQueryService.eigenerPlan();
-}
+                            """)))
+    @ApiResponse(responseCode = "401", description = "Kein oder ungültiges Token", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Nur für Studierende", content = @Content)
+    öffentliches List<PlanEntryPlanResponse> getPlan() {
+        return planQueryService. eigenerPlan();
+    }
 }
