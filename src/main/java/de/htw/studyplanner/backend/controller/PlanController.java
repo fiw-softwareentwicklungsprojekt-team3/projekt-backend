@@ -2,17 +2,17 @@ package de.htw.studyplanner.backend.controller;
 
 import java.util.List;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.GetMapping;
 
 import de.htw.studyplanner.backend.dto.ApiError;
+import de.htw.studyplanner.backend.dto.PlanEntryPlanResponse;
 import de.htw.studyplanner.backend.dto.PlanEntryRequest;
 import de.htw.studyplanner.backend.dto.PlanEntryResponse;
-import de.htw.studyplanner.backend.dto.PlanEntryPlanResponse;
 import de.htw.studyplanner.backend.service.PlanQueryService;
 import de.htw.studyplanner.backend.service.PlanService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,11 +46,11 @@ public class PlanController {
      * @param planService      Service mit den Regeln für den Studienplan
      * @param planQueryService Service zum Laden des Plans inklusive Verstößen
      */
-    öffentlicher PlanController(
-            PlanServiceServiceService,
+    public PlanController(
+            PlanService planService,
             PlanQueryService planQueryService) {
-        Genau das. planService = planService;
-        Genau das. planQueryService = planQueryService;
+        this.planService = planService;
+        this.planQueryService = planQueryService;
     }
 
     /**
@@ -189,6 +189,7 @@ public class PlanController {
     public PlanEntryResponse createEntry(@Valid @RequestBody PlanEntryRequest request) {
         return planService.eintragAnlegen(request);
     }
+
     /**
      * Liefert den vollständigen Plan inklusive aktueller Verstöße.
      *
@@ -206,16 +207,16 @@ public class PlanController {
                     examples = @ExampleObject(name = "Planeintrag mit Verstoß", value = """
                             [
                               {
-                                "ID": 1,
+                                "id": 1,
                                 "moduleCode": "B34",
                                 "semester": "WS 2027",
                                 "offerCode": null,
                                 "courseCode": null,
                                 "courseTitle": null,
-                                "prerequisitesMet": falsch,
-                                "Verstöße": [
+                                "prerequisitesMet": false,
+                                "violations": [
                                   {
-                                    "Schwere": "FEHLER",
+                                    "severity": "FEHLER",
                                     "prerequisiteCode": "B11",
                                     "message": "Voraussetzung B11 für B34 ist nicht erfüllt."
                                   }
@@ -225,7 +226,7 @@ public class PlanController {
                             """)))
     @ApiResponse(responseCode = "401", description = "Kein oder ungültiges Token", content = @Content)
     @ApiResponse(responseCode = "403", description = "Nur für Studierende", content = @Content)
-    öffentliches List<PlanEntryPlanResponse> getPlan() {
-        return planQueryService. eigenerPlan();
+    public List<PlanEntryPlanResponse> getPlan() {
+        return planQueryService.eigenerPlan();
     }
 }
