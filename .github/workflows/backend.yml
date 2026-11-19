@@ -22,7 +22,7 @@ jobs:
 
       # verify = kompilieren, Tests, JaCoCo-Bericht und Coverage-Prüfung
       - name: Build und Tests
-        run: ./mvnw -B verify
+        run: mvn -B verify
 
       # Auch bei roten Tests hochladen, damit der Bericht angesehen werden kann
       - name: JaCoCo-Bericht hochladen
