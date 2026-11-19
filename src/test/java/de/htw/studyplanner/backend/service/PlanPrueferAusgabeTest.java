@@ -257,11 +257,15 @@ class PlanPrueferAusgabeTest {
     }
 
     @Test
-    void lp_b65Mit177_inOrdnung() {
+    void lp_b65Mit177_b66ImSelbenSemester_inOrdnung() {
+        Voraussetzung lp177 = lpVoraussetzung(b65, VoraussetzungsArt.NOTWENDIG, 177, 0);
+        ReflectionTestUtils.setField(lp177, "gleichesSemester", true);
+
         List<PlanVerstoss> verstoesse = pruefeMitLp(
-                lpVoraussetzung(b65, VoraussetzungsArt.NOTWENDIG, 177, 0),
-                List.of(new PlanEintrag(studierende, b65, ws2027)),
-                List.of(leistung(modul("F1", 177), Status.BESTANDEN, ws2025)));
+                lp177,
+                List.of(new PlanEintrag(studierende, b65, ws2027),
+                        new PlanEintrag(studierende, modul("B66", 12), ws2027)),
+                List.of(leistung(modul("F1", 165), Status.BESTANDEN, ws2025)));
 
         assertThat(verstoesse).isEmpty();
     }
@@ -270,6 +274,22 @@ class PlanPrueferAusgabeTest {
         return instanziieren(Modul.class, modul -> {
             ReflectionTestUtils.setField(modul, "code", code);
         });
+    }
+
+    @Test
+    void lp_gleichesSemester_eigenesModulZaehltNichtMit() {
+        Modul b65Mit3Lp = modul("B65", 3);
+        Voraussetzung lp177 = lpVoraussetzung(b65Mit3Lp, VoraussetzungsArt.NOTWENDIG, 177, 0);
+        ReflectionTestUtils.setField(lp177, "gleichesSemester", true);
+
+        List<PlanVerstoss> verstoesse = pruefeMitLp(
+                lp177,
+                List.of(new PlanEintrag(studierende, b65Mit3Lp, ws2027)),
+                List.of(leistung(modul("F1", 174), Status.BESTANDEN, ws2025)));
+
+        assertThat(verstoesse).hasSize(1);
+        assertThat(verstoesse.get(0).meldung())
+                .isEqualTo("B65 braucht 177 LP, bis dahin sind 174 LP erreicht oder geplant");
     }
 
     private static Voraussetzung voraussetzung(
