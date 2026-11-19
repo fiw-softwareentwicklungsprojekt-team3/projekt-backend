@@ -46,12 +46,12 @@ public class PlanController {
      * @param planService      Service mit den Regeln für den Studienplan
      * @param planQueryService Service zum Laden des Plans inklusive Verstößen
      */
-    public PlanController(
-        PlanService planService,
-        PlanQueryService planQueryService) {
-    this.planService = planService;
-    this.planQueryService = planQueryService;
-}
+    öffentlicher PlanController(
+            PlanServiceServiceService,
+            PlanQueryService planQueryService) {
+        Genau das. planService = planService;
+        Genau das. planQueryService = planQueryService;
+    }
 
     /**
      * Plant ein Modul für ein Semester ein.
