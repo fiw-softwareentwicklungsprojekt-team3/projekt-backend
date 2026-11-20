@@ -43,7 +43,9 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.components.schemas.OfferDto.properties.recommendedModuleCode").exists())
                 .andExpect(jsonPath("$.paths['/api/me'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/plan'].get").exists())
-                .andExpect(jsonPath("$.paths['/api/plan/entries'].post").exists());
+                .andExpect(jsonPath("$.paths['/api/plan/entries'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get").exists())
+                .andExpect(jsonPath("$.components.schemas.CohortStatisticsDto").exists());
     }
 
     @Test
@@ -75,7 +77,11 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/plan'].get.responses['200']").exists())
                 .andExpect(jsonPath("$.paths['/api/plan'].get.responses['401']").exists())
                 .andExpect(jsonPath("$.paths['/api/plan'].get.responses['403']").exists())
-                .andExpect(jsonPath("$.paths['/api/plan'].get.security[0].bearerAuth").exists());
+                .andExpect(jsonPath("$.paths['/api/plan'].get.security[0].bearerAuth").exists())
+                .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.responses['200']").exists())
+                .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.responses['401']").exists())
+                .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.responses['403']").exists())
+                .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.security[0].bearerAuth").exists());
     }
 
     @Test
