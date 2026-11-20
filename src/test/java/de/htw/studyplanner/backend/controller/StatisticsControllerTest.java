@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import de.htw.studyplanner.backend.dto.CohortStatisticsDto;
 import de.htw.studyplanner.backend.service.StatisticsService;
 
+// Ein schneller Unit-Test für den Controller, der direkt ohne Docker und ohne Spring Boot Test läuft. Die Integrationstests sind in StatisticsApiTest.
 class StatisticsControllerTest {
 
     static class TestStatisticsService extends StatisticsService {
