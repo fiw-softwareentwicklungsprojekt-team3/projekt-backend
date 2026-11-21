@@ -43,9 +43,11 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.components.schemas.OfferDto.properties.recommendedModuleCode").exists())
                 .andExpect(jsonPath("$.paths['/api/me'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/plan'].get").exists())
-                .andExpect(jsonPath("$.paths['/api/plan/entries'].post").exists());
+                .andExpect(jsonPath("$.paths['/api/plan/entries'].post").exists())
+                .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get").exists())
+                .andExpect(jsonPath("$.components.schemas.CohortStatisticsDto").exists());
     }
-
+// Prüft, dass die dokumentierten Statuscodes in der OpenAPI-Spezifikation enthalten sind
     @Test
     void endpunkteHabenIhreStatuscodes() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
@@ -75,9 +77,13 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/plan'].get.responses['200']").exists())
                 .andExpect(jsonPath("$.paths['/api/plan'].get.responses['401']").exists())
                 .andExpect(jsonPath("$.paths['/api/plan'].get.responses['403']").exists())
-                .andExpect(jsonPath("$.paths['/api/plan'].get.security[0].bearerAuth").exists());
+                .andExpect(jsonPath("$.paths['/api/plan'].get.security[0].bearerAuth").exists())
+                .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.responses['200']").exists())
+                .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.responses['401']").exists())
+                .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.responses['403']").exists())
+                .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.security[0].bearerAuth").exists());
     }
-
+// Prüft, dass die Health-Endpoint keine fremden Fehlercodes enthält (z. B. 409 Conflict)
     @Test
     void healthHatKeineFremdenFehlercodes() throws Exception {
         // springdoc.override-with-generic-response=false: die Fehler aus dem
@@ -85,7 +91,7 @@ class OpenApiDocsTest {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(jsonPath("$.paths['/api/health'].get.responses['409']").doesNotExist());
     }
-
+// Prüft, dass die Registrierung und der Login die erlaubten HTW-Domains in der Beschreibung nennen
     @Test
     void registrierungUndLoginBeschreibenDieHtwEmailRegel() throws Exception {
         // US-28: Statuscodes, Beschreibung und Beispielwerte nennen die erlaubten HTW-Domains.
@@ -105,7 +111,7 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.components.schemas.RegisterResponse.properties.email.example")
                         .value("studentin@student.htw-berlin.de"));
     }
-
+// Prüft, dass die Swagger-UI erreichbar ist
     @Test
     void swaggerUiIstErreichbar() throws Exception {
         mockMvc.perform(get("/swagger-ui/index.html"))

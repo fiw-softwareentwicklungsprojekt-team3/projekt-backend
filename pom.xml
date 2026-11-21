@@ -34,6 +34,12 @@
 		<testcontainers.version>1.21.4</testcontainers.version>
 	</properties>
 	<dependencies>
+
+	    <dependency>
+	        <groupId>org.springframework.boot</groupId>
+	        <artifactId>spring-boot-starter-actuator</artifactId>
+	    </dependency>
+
 		<!-- Web (REST-APIs, Spring MVC) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
