@@ -1,6 +1,10 @@
 package de.htw.studyplanner.backend.repository;
 
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import de.htw.studyplanner.backend.model.Studierende;
 
@@ -12,4 +16,13 @@ public interface StudierendeRepository extends JpaRepository<Studierende, Intege
     // delete() automatisch an. Die fachliche Bedeutung liegt hier darin, dass eine
     // Studierende als Erweiterung einer Nutzenden modelliert wird und deshalb genau
     // diese zusätzlichen Daten für die studentischen Prozesse verwaltet werden.
+
+    /**
+     * Lädt eine Studierende zusammen mit ihrem Startsemester in einer Abfrage.
+     *
+     * @param nutzendeId ID der Person
+     * @return die Studierende mit geladenem Startsemester, leer wenn es sie nicht gibt
+     */
+    @Query("select s from Studierende s join fetch s.startsemester where s.nutzendeId = :nutzendeId")
+    Optional<Studierende> findMitStartsemester(@Param("nutzendeId") Integer nutzendeId);
 }

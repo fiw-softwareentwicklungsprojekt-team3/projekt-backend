@@ -38,15 +38,15 @@ class NutzendeRepositoryTest {
         Semester gespeichertesSemester = semesterRepository.findByJahrAndArt(2026, SemesterArt.WS)
                 .orElseGet(() -> semesterRepository.saveAndFlush(new Semester(2026, SemesterArt.WS)));
 
-        Nutzende nutzende = new Nutzende("max.mustermann@htw-berlin.de", "geheimesPasswort", Rolle.STUDIERENDE);
+        Nutzende nutzende = new Nutzende("max.mustermann@student.htw-berlin.de", "geheimesPasswort", Rolle.STUDIERENDE);
         Nutzende gespeicherteNutzende = nutzendeRepository.saveAndFlush(nutzende);
 
         Studierende studierende = new Studierende(gespeicherteNutzende, gespeichertesSemester);
         studierendeRepository.saveAndFlush(studierende);
 
-        Nutzende gefunden = nutzendeRepository.findByEmail("max.mustermann@htw-berlin.de").orElseThrow();
+        Nutzende gefunden = nutzendeRepository.findByEmail("max.mustermann@student.htw-berlin.de").orElseThrow();
 
-        assertThat(gefunden.getEmail()).isEqualTo("max.mustermann@htw-berlin.de");
+        assertThat(gefunden.getEmail()).isEqualTo("max.mustermann@student.htw-berlin.de");
         assertThat(gefunden.getRolle()).isEqualTo(Rolle.STUDIERENDE);
         assertThat(gefunden.getPasswortHash()).isEqualTo("geheimesPasswort");
         assertThat(gefunden.isSynthetic()).isFalse();
@@ -54,10 +54,10 @@ class NutzendeRepositoryTest {
 
     @Test
     void doppelteEmailWirdVonDerDbAbgelehnt() {
-        nutzendeRepository.saveAndFlush(new Nutzende("duplikat@htw-berlin.de", "hash1", Rolle.STUDIERENDE));
+        nutzendeRepository.saveAndFlush(new Nutzende("duplikat@student.htw-berlin.de", "hash1", Rolle.STUDIERENDE));
 
         assertThatThrownBy(() -> {
-            nutzendeRepository.saveAndFlush(new Nutzende("duplikat@htw-berlin.de", "hash2", Rolle.PROFESSOR_IN));
+            nutzendeRepository.saveAndFlush(new Nutzende("duplikat@student.htw-berlin.de", "hash2", Rolle.PROFESSOR_IN));
         }).isInstanceOf(DataIntegrityViolationException.class);
     }
 

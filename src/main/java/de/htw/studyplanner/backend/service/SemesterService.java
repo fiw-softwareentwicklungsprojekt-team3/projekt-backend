@@ -20,7 +20,6 @@ import de.htw.studyplanner.backend.repository.SemesterRepository;
 public class SemesterService {
 
     private static final Pattern SEMESTER_PATTERN = Pattern.compile("^(WS|SS) (\\d{4})$");
-
     /** Kleinstes erlaubtes Jahr, wie der CHECK auf semester.jahr in V1. */
     static final int MIN_JAHR = 2000;
     /** Größtes erlaubtes Jahr, wie der CHECK auf semester.jahr in V1. */
@@ -70,6 +69,19 @@ public class SemesterService {
      */
     public boolean istFrueher(Semester a, Semester b) {
         return a.compareTo(b) < 0;
+    }
+
+    /**
+     * Vergleicht zwei Semester zeitlich über {@link Semester#compareTo(Semester)}
+     * (nie über {@code semester_id}). Passt als {@link java.util.Comparator}, z. B.
+     * {@code semesterService::vergleiche}.
+     *
+     * @param a erstes Semester
+     * @param b zweites Semester
+     * @return negativ, wenn {@code a} früher ist; 0 bei gleichem Semester; sonst positiv
+     */
+    public int vergleiche(Semester a, Semester b) {
+        return a.compareTo(b);
     }
 
     /**
@@ -127,7 +139,6 @@ public class SemesterService {
         // matcher.group(1) = SemesterArt (WS oder SS), matcher.group(2) = Jahr (JJJJ)
         SemesterArt art = SemesterArt.valueOf(matcher.group(1));
         int jahr = Integer.parseInt(matcher.group(2));
-
         validateJahr(jahr, feld);
         return new Semester(jahr, art);
     }
@@ -183,4 +194,3 @@ public class SemesterService {
                 .orElseGet(() -> semesterRepository.save(new Semester(jahr, art)));
     }
 }
-

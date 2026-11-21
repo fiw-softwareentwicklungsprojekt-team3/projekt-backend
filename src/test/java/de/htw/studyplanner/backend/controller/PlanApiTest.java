@@ -2,6 +2,9 @@ package de.htw.studyplanner.backend.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsStringIgnoringCase;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -32,7 +35,8 @@ import de.htw.studyplanner.backend.repository.StudierendeRepository;
 import de.htw.studyplanner.backend.security.JwtService;
 
 /**
- * Integrationstests für {@code POST /api/plan/entries}: ein Test pro Regel aus dem Ticket.
+ * Integrationstests für die Plan-API ({@code POST /api/plan/entries} und {@code GET /api/plan}):
+ * ein Test pro Regel aus dem Ticket.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -64,7 +68,7 @@ class PlanApiTest {
     private String neueStudierende() {
         Nutzende person = new TransactionTemplate(transactionManager).execute(status -> {
             Nutzende n = nutzendeRepository.save(new Nutzende(
-                    "plan-" + UUID.randomUUID() + "@example.com", "hash-egal", Rolle.STUDIERENDE));
+                    "plan-" + UUID.randomUUID() + "@student.htw-berlin.de", "hash-egal", Rolle.STUDIERENDE));
             Semester ws2026 = semesterRepository.findByJahrAndArt(2026, SemesterArt.WS)
                     .orElseGet(() -> semesterRepository.save(new Semester(2026, SemesterArt.WS)));
             studierendeRepository.save(new Studierende(n, ws2026));
@@ -78,6 +82,11 @@ class PlanApiTest {
                 .header("Authorization", token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json));
+    }
+
+    private ResultActions getPlan(String token) throws Exception {
+        return mockMvc.perform(get("/api/plan")
+                .header("Authorization", token));
     }
 
     @Test
@@ -105,7 +114,7 @@ class PlanApiTest {
     @Test
     void professorinBekommt403() throws Exception {
         Nutzende prof = nutzendeRepository.save(new Nutzende(
-                "plan-prof-" + UUID.randomUUID() + "@example.com", "hash-egal", Rolle.PROFESSOR_IN));
+                "plan-prof-" + UUID.randomUUID() + "@htw-berlin.de", "hash-egal", Rolle.PROFESSOR_IN));
         String token = "Bearer " + jwtService.generateToken(prof);
 
         postEntry(token, """
@@ -292,6 +301,59 @@ class PlanApiTest {
     }
 
     @Test
+    void offerCodeMussZumModulPassen() throws Exception {
+        String token = neueStudierende();
+
+        // EN_B2.2 ist eine 1b-Sprache und gehört zu B26, nicht zu B16
+        postEntry(token, """
+                {
+                  "moduleCode": "B16",
+                  "semester": "WS 2026",
+                  "offerCode": "EN_B2.2",
+                  "courseCode": null,
+                  "courseTitle": null
+                }""")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("offerCode"));
+
+        // Eine Sprache passt nicht zu einem Wahlpflichtmodul
+        postEntry(token, """
+                {
+                  "moduleCode": "B41",
+                  "semester": "SS 2027",
+                  "offerCode": "EN_B2.1",
+                  "courseCode": null,
+                  "courseTitle": null
+                }""")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("offerCode"));
+
+        // B63 hat keine Angebotsliste, nur eine eigene Kursnummer
+        postEntry(token, """
+                {
+                  "moduleCode": "B63",
+                  "semester": "SS 2027",
+                  "offerCode": "WP1",
+                  "courseCode": null,
+                  "courseTitle": null
+                }""")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("offerCode"));
+
+        // Das passende Angebot wird gespeichert
+        postEntry(token, """
+                {
+                  "moduleCode": "B16",
+                  "semester": "WS 2026",
+                  "offerCode": "EN_B2.1",
+                  "courseCode": null,
+                  "courseTitle": null
+                }""")
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.offerCode").value("EN_B2.1"));
+    }
+
+    @Test
     void beiAuswahlModulenSindOfferCodeCourseCodeUndCourseTitleOptional() throws Exception {
         String token = neueStudierende();
 
@@ -369,5 +431,60 @@ class PlanApiTest {
                 }""")
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.semester").value("WS 2028"));
+    }
+
+    @Test
+    void b34OhneB11HatFehler_mitB11InFrueheremSemesterFehlerWeg() throws Exception {
+        String token = neueStudierende();
+
+        // 1. B34 für WS 2027 ohne B11 einplanen
+        postEntry(token, """
+                {
+                  "moduleCode": "B34",
+                  "semester": "WS 2027",
+                  "offerCode": null,
+                  "courseCode": null,
+                  "courseTitle": null
+                }""")
+                .andExpect(status().isCreated());
+
+        // 2. GET /api/plan aufrufen: B34 hat prerequisitesMet = false und FEHLER für B11
+        getPlan(token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.semesters", hasSize(1)))
+                .andExpect(jsonPath("$.semesters[0].entries", hasSize(1)))
+                .andExpect(jsonPath("$.semesters[0].entries[0].moduleCode").value("B34"))
+                .andExpect(jsonPath("$.semesters[0].entries[0].prerequisitesMet").value(false))
+                .andExpect(jsonPath("$.semesters[0].entries[0].violations[?(@.prerequisiteCode == 'B11')].severity")
+                        .value(hasItem("FEHLER")))
+                .andExpect(jsonPath("$.semesters[0].entries[0].violations[?(@.prerequisiteCode == 'B11')].message")
+                        .value(hasItem("Voraussetzung B11 für B34 ist nicht erfüllt.")));
+
+        // 3. B11 in ein früheres Semester (WS 2026) einplanen
+        postEntry(token, """
+                {
+                  "moduleCode": "B11",
+                  "semester": "WS 2026",
+                  "offerCode": null,
+                  "courseCode": null,
+                  "courseTitle": null
+                }""")
+                .andExpect(status().isCreated());
+
+        // 4. GET /api/plan erneut aufrufen: FEHLER für B11 verschwunden, prerequisitesMet bei B34 jetzt true
+        // (empfohlene Voraussetzungen B21 und B24 bleiben als WARNUNG in violations erhalten)
+        getPlan(token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.semesters[*].entries[*]", hasSize(2)))
+                .andExpect(jsonPath("$.semesters[*].entries[?(@.moduleCode == 'B34')].prerequisitesMet")
+                        .value(hasItem(true)))
+                .andExpect(jsonPath("$.semesters[*].entries[?(@.moduleCode == 'B34')].violations[?(@.prerequisiteCode == 'B11')]")
+                        .isEmpty())
+                .andExpect(jsonPath("$.semesters[*].entries[?(@.moduleCode == 'B34')].violations[?(@.severity == 'FEHLER')]")
+                        .isEmpty())
+                .andExpect(jsonPath("$.semesters[*].entries[?(@.moduleCode == 'B34')].violations[?(@.prerequisiteCode == 'B21')].severity")
+                        .value(hasItem("WARNUNG")))
+                .andExpect(jsonPath("$.semesters[*].entries[?(@.moduleCode == 'B34')].violations[?(@.prerequisiteCode == 'B24')].severity")
+                        .value(hasItem("WARNUNG")));
     }
 }

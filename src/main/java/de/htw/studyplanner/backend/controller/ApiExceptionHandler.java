@@ -25,6 +25,7 @@ import de.htw.studyplanner.backend.exception.ConflictException;
 import de.htw.studyplanner.backend.exception.FieldValidationException;
 import de.htw.studyplanner.backend.exception.NotFoundException;
 import de.htw.studyplanner.backend.exception.UnauthorizedException;
+import de.htw.studyplanner.backend.exception.UngueltigerEinladungscodeException;
 import de.htw.studyplanner.backend.service.InvalidCredentialsException;
 import de.htw.studyplanner.backend.service.InvalidSemesterFormatException;
 
@@ -81,6 +82,14 @@ public class ApiExceptionHandler {
         return build(HttpStatus.BAD_REQUEST,
                 "Die Eingabe ist ungültig. Bitte prüfe die markierten Felder.", req,
                 List.of(new ApiFieldError(ex.getField(), ex.getMessage())));
+    }
+
+    // 400: Einladungscode unbekannt, abgelaufen oder eingelöst, immer dieselbe Meldung (E2.5)
+    @ExceptionHandler(UngueltigerEinladungscodeException.class)
+    public ResponseEntity<ApiError> handleUngueltigerEinladungscode(UngueltigerEinladungscodeException ex,
+                                                                     HttpServletRequest req) {
+        return build(HttpStatus.BAD_REQUEST, UngueltigerEinladungscodeException.MELDUNG, req,
+                List.of(new ApiFieldError("code", UngueltigerEinladungscodeException.MELDUNG)));
     }
 
     // 404

@@ -15,7 +15,7 @@ public record RegisterResponse(
         @Schema(description = "ID der angelegten Person", example = "1")
         Integer id,
 
-        @Schema(description = "E-Mail-Adresse", example = "studentin@example.com")
+        @Schema(description = "E-Mail-Adresse", example = "studentin@student.htw-berlin.de")
         String email,
 
         @Schema(description = "Rolle, bei der Registrierung immer STUDIERENDE", example = "STUDIERENDE")

@@ -335,6 +335,8 @@ Entscheidend ist also das Ergebnis, nicht das Datum:
 | `NICHT_BESTANDEN` | **Fehler** |
 | weder bestanden noch früher geplant | **Fehler** |
 
+Ist ein Modul `NICHT_BESTANDEN`, zählt es als Voraussetzung nicht erfüllt. Wird es danach in einem späteren Semester erneut geplant (`plan_eintrag.semester > leistung.semester`), zählt diese neue Planung wieder als geplant.
+
 **Warum nicht „nur zukünftige oder laufende Semester zählen“?** Noten kommen oft erst Wochen nach Beginn des nächsten Semesters. Der 2. Prüfungszeitraum reicht bis in die erste Vorlesungswoche des Folgesemesters (RStPO §16 Abs. 5), und Noten müssen erst bis zu drei Wochen danach bekannt gegeben werden (RStPO §17 Abs. 7). Würden vergangene Semester nicht mehr zählen, wäre der Plan in dieser Zeit fälschlich ungültig, obwohl die Note einfach noch fehlt. Die StuPO verbietet auch nicht, das nächste Semester vor den Noten zu planen.
 
 So bleibt Vorausplanen möglich, und eine bekannte durchgefallene Prüfung blockiert trotzdem sofort. Dieselbe Regel gilt für LP-Voraussetzungen: gezählt werden bestandene LP plus LP aus Modulen, die in früheren Semestern geplant und nicht als `NICHT_BESTANDEN` eingetragen sind.
@@ -586,7 +588,7 @@ classDiagram
     PlanPruefer ..> Verstoss
 ```
 
-`Schwere` hat die Werte `FEHLER` (notwendig, oder LP unter `min_lp − toleranz_lp`) und `WARNUNG` (empfohlen, oder LP im Toleranzbereich). Der Name `PlanPruefer` ist ein Vorschlag für die Klasse, die Pläne gegen die Voraussetzungen prüft.
+`Schwere` hat die Werte `FEHLER` (notwendig, oder LP unter `min_lp − toleranz_lp`) und `WARNUNG` (empfohlen, oder LP im Toleranzbereich). Zusätzlich gibt es `HINWEIS` für ein vorausgesetztes Modul, das in einem vergangenen Semester geplant ist, für das aber noch kein Ergebnis vorliegt („Ergebnis ausstehend“). Der Name `PlanPruefer` ist ein Vorschlag für die Klasse, die Pläne gegen die Voraussetzungen prüft.
 
 ## 8. Entscheidungen
 
@@ -623,7 +625,7 @@ Alle Punkte sind im Team entschieden und, soweit sie die Datenbank betreffen, in
 | E26 | Sprachangebote je Niveau | eine Zeile pro Sprache **und** Niveau (10 Zeilen), weil dieselbe Sprache in B16 und B26 auf unterschiedlichen GER-Niveaus läuft. `niveaustufe` trennt die Module (`1a` = B16, `1b` = B26), das GER-Niveau steht in `code` und `bezeichnung`. „Gleiche Sprache in B16 und B26“ prüft der Service über das Präfix vor dem Unterstrich |
 | E27 | Zielzeile von `plan_eintrag.nutzende_id` und `leistung.nutzende_id` | beide zeigen auf **`studierende`**, nicht auf `nutzende`. Nur Studierende planen Module und erbringen Leistungen. Da eine Person mit der Rolle `PROFESSOR_IN` keine Zeile in `studierende` hat, kann sie schon durch den Fremdschlüssel keinen Plan und keine Leistung bekommen; das muss der Service nicht zusätzlich prüfen. So in V1 umgesetzt, die Diagramme in diesem Dokument zeigten bis jetzt fälschlich `nutzende` |
 | E29 | Rollenfeld in der API | Das Feld heißt überall `role`, nicht `rolle`. Betrifft `RegisterResponse`, `LoginResponse`, `MeResponse` und das Frontend. Bisher nur als „D1" in #60 zitiert |
-| E30 | Verstöße im Plan | `GET /api/plan` hängt an jeden Eintrag `prerequisitesMet` (true/false) und `violations` (`severity`, `prerequisiteCode`, `message`). Nichts davon wird gespeichert, es wird bei jeder Anfrage berechnet. Bisher ebenfalls als „D1" zitiert (#73) — die Doppelbelegung ist damit aufgelöst |
+| E30 | Verstöße im Plan | `GET /api/plan` hängt an jeden Eintrag `prerequisitesMet` (true/false) und `violations` (`severity`, `prerequisiteCode`, `message`). Nichts davon wird gespeichert, es wird bei jeder Anfrage berechnet. Bisher ebenfalls als „D1" zitiert (#73) — die Doppelbelegung ist damit aufgelöst. Seit US-38 ist die Antwort nach Semestern gruppiert: `{ startSemester, totalLp, semesters: [{ semester, lp, entries: [...] }] }`, Semester zeitlich sortiert, Einträge nach Modulcode; `prerequisitesMet` und `violations` hängen an jedem Eintrag in `entries`. Die flache Liste aus US-33 ist damit abgelöst. Lesen steht in `PlanQueryService`, Schreiben in `PlanService` |
 | E31 | Planbarer Zeitraum | Planbar ist jedes Semester ab dem Startsemester. Davor → **400** mit `semester` in `errors`. Bisher als „D4" zitiert (#66) |
 | E32 | Was das Speichern blockiert | Nicht erfüllte Voraussetzungen blockieren das Speichern nie (E2). Der **Turnus blockiert dagegen schon**: ein Modul darf nur in ein Semester der passenden Art, sonst **400**. Das Jahr ist frei — ein WS-Modul darf in WS 2026, WS 2027 oder WS 2028 liegen, nur nie in einem SS. Bisher als „D5" zitiert (#66), das beides zusammengefasst hat; am 05.11.2026 getrennt |
 | E33 | Antwort auf POST/PUT im Plan | `POST` und `PUT` auf `/api/plan/entries` antworten mit dem gespeicherten Eintrag inklusive `id`. Das Frontend lädt danach `GET /api/plan` neu. Bisher als „D7" zitiert (#66, #73) |

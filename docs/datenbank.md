@@ -103,6 +103,7 @@ Zeile überschreibt, steht in `leistung.status` immer nur der aktuelle Stand. Ei
 Durchfallquote je Modul lässt sich deshalb nicht aus `status` ablesen, sondern
 nur über `anzahl_versuche > 1`.
 
+ feature/US-51-lehrenden-konto
 ## Lehrenden-Konto (PROFESSOR_IN)
 
 Lehrende können sich nicht selbst registrieren. Ein Konto entsteht beim Start der Anwendung, wenn in der `.env` beide Werte gesetzt sind:
@@ -116,3 +117,15 @@ PROFESSOR_PASSWORD=ein-eigenes-passwort
 - Sind die Werte leer, passiert nichts. Gibt es die E-Mail schon, wird kein zweites Konto angelegt.
 - Das Konto hat die Rolle `PROFESSOR_IN` und keinen Eintrag in `studierende`.
 - Anmelden: `POST /api/auth/login` (Antwort enthält `role: "PROFESSOR_IN"`).
+
+## Einladungscodes (V4)
+
+Die Tabelle `einladungscode` (Migration `V4__einladungscode.sql`) enthält die Codes,
+mit denen sich Professor:innen registrieren. In der Migration stehen bewusst keine
+Codes, weil das Repo öffentlich ist. Anlegen per Profil:
+
+```
+./mvnw spring-boot:run -Dspring-boot.run.profiles=einladungscode
+```
+
+Alles Weitere: [einladungscodes.md](einladungscodes.md)

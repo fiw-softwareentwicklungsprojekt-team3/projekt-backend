@@ -101,6 +101,8 @@ class SemesterServiceTest {
             "WiSe 2026",
             "XX 2027",
             "WS 202a",
+            "SS 1999",
+            "WS 2101",
             " WS 2026",
             "WS 2026 "
     })
@@ -230,6 +232,17 @@ class SemesterServiceTest {
     }
 
     @Test
+    void istVorbeiVergleichtMitAktuellemSemester() {
+        Semester ws2026 = new Semester(2026, SemesterArt.WS);
+        Semester ss2027 = new Semester(2027, SemesterArt.SS);
+
+        assertThat(semesterService.istVorbei(ws2026, LocalDate.of(2027, 3, 31))).isFalse();
+        assertThat(semesterService.istVorbei(ws2026, LocalDate.of(2027, 4, 1))).isTrue();
+        assertThat(semesterService.istVorbei(ss2027, LocalDate.of(2027, 9, 30))).isFalse();
+        assertThat(semesterService.istVorbei(ss2027, LocalDate.of(2027, 10, 1))).isTrue();
+    }
+
+    @Test
     void labelUndToStringSindGetrennt() {
         Semester semester = new Semester(2026, SemesterArt.WS);
         semester.setSemesterId(42);
@@ -275,18 +288,19 @@ class SemesterServiceTest {
         StudierendeRepository studierendeRepo = mock(StudierendeRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
 
-        when(nutzendeRepo.findByEmail("neu@example.com")).thenReturn(Optional.empty());
+        when(nutzendeRepo.findByEmail("neu@student.htw-berlin.de")).thenReturn(Optional.empty());
         when(passwordEncoder.encode("geheimesPasswort")).thenReturn("hash");
         when(nutzendeRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(semesterRepository.findByJahrAndArt(2026, SemesterArt.WS))
                 .thenReturn(Optional.of(new Semester(2026, SemesterArt.WS)));
 
+        KontoService kontoService = new KontoService(nutzendeRepo, passwordEncoder);
         RegistrationService registrationService = new RegistrationService(
-                nutzendeRepo, studierendeRepo, semesterService, passwordEncoder);
+                kontoService, studierendeRepo, semesterService);
 
         RegisterResponse response = registrationService.register(
                 new RegisterRequest(
-                        "neu@example.com", "geheimesPasswort", "WS 2026"));
+                        "neu@student.htw-berlin.de", "geheimesPasswort", "WS 2026"));
 
         assertThat(response.startsemester()).isEqualTo("WS 2026");
         verify(semesterRepository).findByJahrAndArt(2026, SemesterArt.WS);
