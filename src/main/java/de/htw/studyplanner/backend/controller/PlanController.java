@@ -1,6 +1,5 @@
 package de.htw.studyplanner.backend.controller;
 
-import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,9 +9,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import de.htw.studyplanner.backend.dto.ApiError;
-import de.htw.studyplanner.backend.dto.PlanEntryPlanResponse;
 import de.htw.studyplanner.backend.dto.PlanEntryRequest;
 import de.htw.studyplanner.backend.dto.PlanEntryResponse;
+import de.htw.studyplanner.backend.dto.PlanResponse;
 import de.htw.studyplanner.backend.service.PlanQueryService;
 import de.htw.studyplanner.backend.service.PlanService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,11 +24,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 
 /**
- * Studienplan der angemeldeten Person: Module für ein Semester einplanen.
+ * Studienplan der angemeldeten Person: Plan abrufen und Module für ein Semester einplanen.
  *
  * <p>Nur für {@code STUDIERENDE}, das regelt die SecurityConfig ({@code /api/plan/**}).
  * Die Person kommt aus dem Token. Der Controller leitet nur weiter, die Logik steht
- * in {@link PlanService}.
+ * in {@link PlanService} (schreiben) und {@link PlanQueryService} (lesen).
  */
 @RestController
 @RequestMapping("/api/plan")
@@ -51,6 +50,211 @@ public class PlanController {
             PlanQueryService planQueryService) {
         this.planService = planService;
         this.planQueryService = planQueryService;
+    }
+
+    /**
+     * Liefert den ganzen Plan der angemeldeten Person, nach Semestern gruppiert, mit den
+     * aktuell berechneten Verstößen je Eintrag (US-38, E30).
+     *
+     * @return Startsemester, LP-Summe und die Semester mit ihren Einträgen
+     */
+    @GetMapping
+    @Operation(summary = "Eigenen Plan abrufen",
+            description = """
+                    Liefert den ganzen Plan der angemeldeten Person, nach Semestern gruppiert.
+                    Semester sind zeitlich sortiert, Einträge innerhalb eines Semesters nach Modulcode.
+                    Semester ohne Einträge fehlen, Lücken füllt das Frontend.
+                    Ein leerer Plan liefert `200` mit `semesters: []` und `totalLp: 0`.
+
+                    Jeder Eintrag enthält `prerequisitesMet` und `violations` (E30). `severity` ist:
+                    - `FEHLER`: notwendige Voraussetzung fehlt oder zu wenige LP
+                    - `WARNUNG`: empfohlene Voraussetzung fehlt, oder LP-Lücke innerhalb der Toleranz
+                      (nur mit Zulassung durch den Prüfungsausschuss)
+                    - `HINWEIS`: Voraussetzung liegt in einem vergangenen Semester, das Ergebnis fehlt noch
+
+                    `prerequisitesMet` ist `false`, sobald ein `FEHLER` vorliegt;
+                    `WARNUNG` und `HINWEIS` ändern daran nichts.
+                    LP-Summen (`lp`, `totalLp`) und Verstöße werden bei jeder Anfrage berechnet,
+                    nichts davon wird gespeichert.
+
+                    `recommendedSemester` ist das empfohlene Fachsemester laut StuPO,
+                    nicht das Plansemester.""")
+    @ApiResponse(responseCode = "200", description = "Plan der angemeldeten Person",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = PlanResponse.class),
+                    examples = {
+                            @ExampleObject(name = "Plan ohne Verstöße",
+                                    description = "Normalfall: Semester zeitlich sortiert, Einträge nach "
+                                            + "Modulcode. B21 empfiehlt B11 und B13, beide liegen früher "
+                                            + "im Plan, deshalb keine Verstöße.",
+                                    value = """
+                                    {
+                                      "startSemester": "WS 2026",
+                                      "totalLp": 16,
+                                      "semesters": [
+                                        {
+                                          "semester": "WS 2026",
+                                          "lp": 11,
+                                          "entries": [
+                                            {
+                                              "id": 1,
+                                              "moduleCode": "B11",
+                                              "moduleName": "Programmierung 1",
+                                              "lp": 6,
+                                              "recommendedSemester": 1,
+                                              "offerCode": null,
+                                              "offerName": null,
+                                              "courseCode": null,
+                                              "courseTitle": null,
+                                              "prerequisitesMet": true,
+                                              "violations": []
+                                            },
+                                            {
+                                              "id": 2,
+                                              "moduleCode": "B13",
+                                              "moduleName": "Grundlegende Konzepte der Informatik",
+                                              "lp": 5,
+                                              "recommendedSemester": 1,
+                                              "offerCode": null,
+                                              "offerName": null,
+                                              "courseCode": null,
+                                              "courseTitle": null,
+                                              "prerequisitesMet": true,
+                                              "violations": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "semester": "SS 2027",
+                                          "lp": 5,
+                                          "entries": [
+                                            {
+                                              "id": 3,
+                                              "moduleCode": "B21",
+                                              "moduleName": "Programmierung 2",
+                                              "lp": 5,
+                                              "recommendedSemester": 2,
+                                              "offerCode": null,
+                                              "offerName": null,
+                                              "courseCode": null,
+                                              "courseTitle": null,
+                                              "prerequisitesMet": true,
+                                              "violations": []
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }"""),
+                            @ExampleObject(name = "Plan mit Fehler und Warnungen",
+                                    description = "B34 liegt im WS 2027, die notwendige Voraussetzung B11 "
+                                            + "fehlt im Plan: FEHLER, prerequisitesMet = false. Die empfohlenen "
+                                            + "B21 und B24 fehlen ebenfalls: nur WARNUNG. Das Speichern war "
+                                            + "trotzdem erlaubt (E2).",
+                                    value = """
+                                    {
+                                      "startSemester": "WS 2026",
+                                      "totalLp": 14,
+                                      "semesters": [
+                                        {
+                                          "semester": "WS 2026",
+                                          "lp": 4,
+                                          "entries": [
+                                            {
+                                              "id": 1,
+                                              "moduleCode": "B16",
+                                              "moduleName": "1. Fremdsprache 1",
+                                              "lp": 4,
+                                              "recommendedSemester": 1,
+                                              "offerCode": "EN_B2.1",
+                                              "offerName": "Englisch Fachsprache B2.1 (Technik)",
+                                              "courseCode": null,
+                                              "courseTitle": null,
+                                              "prerequisitesMet": true,
+                                              "violations": []
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "semester": "WS 2027",
+                                          "lp": 10,
+                                          "entries": [
+                                            {
+                                              "id": 2,
+                                              "moduleCode": "B34",
+                                              "moduleName": "Softwareentwicklungsprojekt",
+                                              "lp": 10,
+                                              "recommendedSemester": 3,
+                                              "offerCode": null,
+                                              "offerName": null,
+                                              "courseCode": null,
+                                              "courseTitle": null,
+                                              "prerequisitesMet": false,
+                                              "violations": [
+                                                {
+                                                  "severity": "FEHLER",
+                                                  "prerequisiteCode": "B11",
+                                                  "message": "Voraussetzung B11 für B34 ist nicht erfüllt."
+                                                },
+                                                {
+                                                  "severity": "WARNUNG",
+                                                  "prerequisiteCode": "B21",
+                                                  "message": "Voraussetzung B21 für B34 ist nicht erfüllt."
+                                                },
+                                                {
+                                                  "severity": "WARNUNG",
+                                                  "prerequisiteCode": "B24",
+                                                  "message": "Voraussetzung B24 für B34 ist nicht erfüllt."
+                                                }
+                                              ]
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }"""),
+                            @ExampleObject(name = "Leerer Plan",
+                                    description = "Noch nichts eingeplant: 200 mit leerer Liste, kein 404.",
+                                    value = """
+                                    {
+                                      "startSemester": "WS 2026",
+                                      "totalLp": 0,
+                                      "semesters": []
+                                    }""")
+                    }))
+    @ApiResponse(responseCode = "401",
+            description = "Kein Token, Token ungültig bzw. abgelaufen, oder die Person existiert nicht mehr",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ApiError.class),
+                    examples = {
+                            @ExampleObject(name = "Nicht angemeldet", value = """
+                                    {
+                                      "timestamp": "2026-11-21T12:00:00Z",
+                                      "status": 401,
+                                      "error": "Unauthorized",
+                                      "message": "Bitte melde dich an, um fortzufahren.",
+                                      "path": "/api/plan"
+                                    }"""),
+                            @ExampleObject(name = "Konto gelöscht", value = """
+                                    {
+                                      "timestamp": "2026-11-21T12:00:00Z",
+                                      "status": 401,
+                                      "error": "Unauthorized",
+                                      "message": "Dein Konto existiert nicht mehr. Bitte melde dich erneut an.",
+                                      "path": "/api/plan"
+                                    }""")
+                    }))
+    @ApiResponse(responseCode = "403", description = "Nur für Studierende (z. B. Token einer Professorin)",
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(implementation = ApiError.class),
+                    examples = @ExampleObject(name = "Falsche Rolle", value = """
+                            {
+                              "timestamp": "2026-11-21T12:00:00Z",
+                              "status": 403,
+                              "error": "Forbidden",
+                              "message": "Dafür hast du keine Berechtigung.",
+                              "path": "/api/plan"
+                            }""")))
+    public PlanResponse getPlan() {
+        return planQueryService.eigenerPlan();
     }
 
     /**
@@ -188,45 +392,5 @@ public class PlanController {
                             }""")))
     public PlanEntryResponse createEntry(@Valid @RequestBody PlanEntryRequest request) {
         return planService.eintragAnlegen(request);
-    }
-
-    /**
-     * Liefert den vollständigen Plan inklusive aktueller Verstöße.
-     *
-     * @return Plan mit Voraussetzungen und Verstößen
-     */
-    @GetMapping
-    @Operation(
-            summary = "Studienplan mit Voraussetzungen anzeigen",
-            description = "Liefert jeden Planeintrag mit prerequisitesMet und violations.")
-    @ApiResponse(
-            responseCode = "200",
-            description = "Plan wurde geladen",
-            content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject(name = "Planeintrag mit Verstoß", value = """
-                            [
-                              {
-                                "id": 1,
-                                "moduleCode": "B34",
-                                "semester": "WS 2027",
-                                "offerCode": null,
-                                "courseCode": null,
-                                "courseTitle": null,
-                                "prerequisitesMet": false,
-                                "violations": [
-                                  {
-                                    "severity": "FEHLER",
-                                    "prerequisiteCode": "B11",
-                                    "message": "Voraussetzung B11 für B34 ist nicht erfüllt."
-                                  }
-                                ]
-                              }
-                            ]
-                            """)))
-    @ApiResponse(responseCode = "401", description = "Kein oder ungültiges Token", content = @Content)
-    @ApiResponse(responseCode = "403", description = "Nur für Studierende", content = @Content)
-    public List<PlanEntryPlanResponse> getPlan() {
-        return planQueryService.eigenerPlan();
     }
 }
