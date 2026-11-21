@@ -1,9 +1,6 @@
 package de.htw.studyplanner.backend.repository;
- feature/US-53a-cohort-statistics-service
-import java.util.List;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,7 +13,6 @@ import de.htw.studyplanner.backend.model.Studierende;
  * Repository für den Datenzugriff auf {@link Studierende}-Datensätze.
  */
 public interface StudierendeRepository extends JpaRepository<Studierende, Integer> {
- feature/US-53a-cohort-statistics-service
 
     /**
      * Lädt alle Studierenden inklusive ihres Startsemesters in einer einzigen Abfrage,
@@ -26,7 +22,6 @@ public interface StudierendeRepository extends JpaRepository<Studierende, Intege
      */
     @Query("SELECT s FROM Studierende s JOIN FETCH s.startsemester")
     List<Studierende> findAllWithStartsemester();
-}
 
     // Das Repository bietet die Standard-JPA-Methoden wie save(), findById() und
     // delete() automatisch an. Die fachliche Bedeutung liegt hier darin, dass eine
@@ -42,4 +37,3 @@ public interface StudierendeRepository extends JpaRepository<Studierende, Intege
     @Query("select s from Studierende s join fetch s.startsemester where s.nutzendeId = :nutzendeId")
     Optional<Studierende> findMitStartsemester(@Param("nutzendeId") Integer nutzendeId);
 }
- 
