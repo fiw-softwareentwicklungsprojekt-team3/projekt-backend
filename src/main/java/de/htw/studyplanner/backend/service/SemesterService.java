@@ -72,6 +72,19 @@ public class SemesterService {
     }
 
     /**
+     * Vergleicht zwei Semester zeitlich über {@link Semester#compareTo(Semester)}
+     * (nie über {@code semester_id}). Passt als {@link java.util.Comparator}, z. B.
+     * {@code semesterService::vergleiche}.
+     *
+     * @param a erstes Semester
+     * @param b zweites Semester
+     * @return negativ, wenn {@code a} früher ist; 0 bei gleichem Semester; sonst positiv
+     */
+    public int vergleiche(Semester a, Semester b) {
+        return a.compareTo(b);
+    }
+
+    /**
      * Prüft anhand von {@link Semester#compareTo(Semester)}, ob zwei Semester
      * fachlich dasselbe Jahr und dieselbe Art haben (nie über {@code semester_id}).
      *

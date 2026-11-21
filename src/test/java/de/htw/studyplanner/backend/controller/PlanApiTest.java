@@ -451,12 +451,13 @@ class PlanApiTest {
         // 2. GET /api/plan aufrufen: B34 hat prerequisitesMet = false und FEHLER für B11
         getPlan(token)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].moduleCode").value("B34"))
-                .andExpect(jsonPath("$[0].prerequisitesMet").value(false))
-                .andExpect(jsonPath("$[0].violations[?(@.prerequisiteCode == 'B11')].severity")
+                .andExpect(jsonPath("$.semesters", hasSize(1)))
+                .andExpect(jsonPath("$.semesters[0].entries", hasSize(1)))
+                .andExpect(jsonPath("$.semesters[0].entries[0].moduleCode").value("B34"))
+                .andExpect(jsonPath("$.semesters[0].entries[0].prerequisitesMet").value(false))
+                .andExpect(jsonPath("$.semesters[0].entries[0].violations[?(@.prerequisiteCode == 'B11')].severity")
                         .value(hasItem("FEHLER")))
-                .andExpect(jsonPath("$[0].violations[?(@.prerequisiteCode == 'B11')].message")
+                .andExpect(jsonPath("$.semesters[0].entries[0].violations[?(@.prerequisiteCode == 'B11')].message")
                         .value(hasItem("Voraussetzung B11 für B34 ist nicht erfüllt.")));
 
         // 3. B11 in ein früheres Semester (WS 2026) einplanen
@@ -474,16 +475,16 @@ class PlanApiTest {
         // (empfohlene Voraussetzungen B21 und B24 bleiben als WARNUNG in violations erhalten)
         getPlan(token)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
-                .andExpect(jsonPath("$[?(@.moduleCode == 'B34')].prerequisitesMet")
+                .andExpect(jsonPath("$.semesters[*].entries[*]", hasSize(2)))
+                .andExpect(jsonPath("$.semesters[*].entries[?(@.moduleCode == 'B34')].prerequisitesMet")
                         .value(hasItem(true)))
-                .andExpect(jsonPath("$[?(@.moduleCode == 'B34')].violations[?(@.prerequisiteCode == 'B11')]")
+                .andExpect(jsonPath("$.semesters[*].entries[?(@.moduleCode == 'B34')].violations[?(@.prerequisiteCode == 'B11')]")
                         .isEmpty())
-                .andExpect(jsonPath("$[?(@.moduleCode == 'B34')].violations[?(@.severity == 'FEHLER')]")
+                .andExpect(jsonPath("$.semesters[*].entries[?(@.moduleCode == 'B34')].violations[?(@.severity == 'FEHLER')]")
                         .isEmpty())
-                .andExpect(jsonPath("$[?(@.moduleCode == 'B34')].violations[?(@.prerequisiteCode == 'B21')].severity")
+                .andExpect(jsonPath("$.semesters[*].entries[?(@.moduleCode == 'B34')].violations[?(@.prerequisiteCode == 'B21')].severity")
                         .value(hasItem("WARNUNG")))
-                .andExpect(jsonPath("$[?(@.moduleCode == 'B34')].violations[?(@.prerequisiteCode == 'B24')].severity")
+                .andExpect(jsonPath("$.semesters[*].entries[?(@.moduleCode == 'B34')].violations[?(@.prerequisiteCode == 'B24')].severity")
                         .value(hasItem("WARNUNG")));
     }
 }
