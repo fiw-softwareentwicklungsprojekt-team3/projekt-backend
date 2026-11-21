@@ -48,6 +48,10 @@ class RollenZugriffTest {
 
     @Test
     void studierendeSindAufPlanNichtVerboten() throws Exception {
+        // Nicht auf 200 prüfen: Die Person aus bearer(...) steht nicht in der Datenbank,
+        // dafür liefert GET /api/plan korrekt 401 (siehe PlanQueryService). Hier zählt nur,
+        // dass die Rolle STUDIERENDE nicht mit 403 abgewiesen wird. Den Inhalt prüft
+        // PlanAbrufenApiTest.
         assertThat(statusVon("/api/plan", Rolle.STUDIERENDE)).isNotEqualTo(403);
     }
 
