@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 
 import de.htw.studyplanner.backend.dto.ApiError;
 import de.htw.studyplanner.backend.dto.PlanEntryRequest;
@@ -393,4 +395,25 @@ public class PlanController {
     public PlanEntryResponse createEntry(@Valid @RequestBody PlanEntryRequest request) {
         return planService.eintragAnlegen(request);
     }
+
+        /**
+     * Verschiebt einen Planeintrag in ein anderes Semester und/oder ändert die Auswahl (US-39).
+     */
+    @PutMapping("/entries/{id}")
+    @Operation(summary = "Planeintrag verschieben oder Auswahl ändern",
+            description = """
+                    Gleicher Body wie beim Einplanen, gleiche Regeln (Startsemester, Turnus, Auswahl).
+                    Ein anderer `moduleCode` ergibt `400`: dafür löschen und neu einplanen.
+                    Ein fremder oder nicht vorhandener Eintrag ergibt `404`.""")
+    @ApiResponse(responseCode = "200", description = "Eintrag wurde geändert")
+    @ApiResponse(responseCode = "400", description = "Anderer Modulcode, vor dem Startsemester, "
+            + "Turnus-Verstoß oder unerlaubte Auswahl", content = @Content(schema = @Schema(implementation = ApiError.class)))
+    @ApiResponse(responseCode = "401", description = "Kein oder ungültiges Token", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Nur für Studierende", content = @Content)
+    @ApiResponse(responseCode = "404", description = "Eintrag existiert nicht oder gehört einer anderen Person",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public PlanEntryResponse updateEntry(@PathVariable Integer id, @Valid @RequestBody PlanEntryRequest request) {
+        return planService.eintragAendern(id, request);
+    }
+    
 }
