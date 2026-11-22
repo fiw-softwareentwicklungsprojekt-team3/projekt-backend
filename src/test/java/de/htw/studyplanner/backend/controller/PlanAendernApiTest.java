@@ -137,4 +137,29 @@ class PlanAendernApiTest {
         mockMvc.perform(get("/api/plan").header("Authorization", token))
                 .andExpect(jsonPath("$.semesters", hasSize(0)));
     }
+
+        @Test
+    void fremdenEintragAendernOderLoeschenGibt404() throws Exception {
+        String besitzerin = neueStudierende();
+        String andere = neueStudierende();
+        int id = b34Einplanen(besitzerin);
+
+        putEntry(andere, id, """
+                { "moduleCode": "B34", "semester": "WS 2028" }""")
+                .andExpect(status().isNotFound());
+        deleteEntry(andere, id).andExpect(status().isNotFound());
+
+        // Der Eintrag der Besitzerin ist unverändert
+        mockMvc.perform(get("/api/plan").header("Authorization", besitzerin))
+                .andExpect(jsonPath("$.semesters[0].semester").value("WS 2027"));
+    }
+
+    @Test
+    void nichtVorhandenerEintragGibtDieselbe404Meldung() throws Exception {
+        String token = neueStudierende();
+
+        deleteEntry(token, 999_999)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Planeintrag mit der ID 999999 wurde nicht gefunden."));
+    }
 }
