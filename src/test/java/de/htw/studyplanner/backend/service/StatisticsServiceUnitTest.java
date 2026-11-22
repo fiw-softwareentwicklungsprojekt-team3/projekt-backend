@@ -68,8 +68,9 @@ class StatisticsServiceUnitTest {
         Studierende s2 = erstelleStudierende(2, ws2024); // 151 LP, Sem 1-3 komplett -> Bachelor-Zulassung
         Studierende s3 = erstelleStudierende(3, ws2024); // 150 LP, B34 fehlt -> Sem 1-3 unvollständig
         Studierende s4 = erstelleStudierende(4, ws2024); // 11 LP
+        Studierende s5 = erstelleStudierende(5, ws2024); // 0 LP (Person ohne Leistungen für Mindestgröße 5)
 
-        when(studierendeRepository.findAllWithStartsemester()).thenReturn(List.of(s1, s2, s3, s4));
+        when(studierendeRepository.findAllWithStartsemester()).thenReturn(List.of(s1, s2, s3, s4, s5));
 
         List<Leistung> alleLeistungen = new ArrayList<>();
 
@@ -120,6 +121,8 @@ class StatisticsServiceUnitTest {
         alleLeistungen.add(erstelleBestandeneLeistung(s4, sem1To3.get(0))); // B11 (6 LP)
         alleLeistungen.add(erstelleBestandeneLeistung(s4, sem1To3.get(1))); // B12 (5 LP)
 
+        // s5: 0 LP (keine Leistungen)
+
         when(leistungRepository.findByStatusWithModulAndStudierende(Status.BESTANDEN))
                 .thenReturn(alleLeistungen);
 
@@ -129,11 +132,38 @@ class StatisticsServiceUnitTest {
         CohortStatisticsDto dto = ergebnis.getFirst();
 
         assertThat(dto.cohort()).isEqualTo("WS 2024");
-        assertThat(dto.studentCount()).isEqualTo(4);
-        assertThat(dto.averageLp()).isEqualTo(115.5);
-        assertThat(dto.averageProgressPercent()).isEqualTo(64.2);
+        assertThat(dto.studentCount()).isEqualTo(5);
+        // LP-Summe = 462 -> 462 / 5 = 92.4
+        assertThat(dto.averageLp()).isEqualTo(92.4);
+        // Fortschritt = (92.4 / 180.0) * 100 = 51.333... -> 51.3%
+        assertThat(dto.averageProgressPercent()).isEqualTo(51.3);
         assertThat(dto.completedSemesters1To3Count()).isEqualTo(2); // nur s1 und s2
         assertThat(dto.bachelorThesisEligibleCount()).isEqualTo(1); // nur s2 (>= 151 LP und Sem 1-3)
+    }
+
+    @Test
+    void kohorteMitWenigerAlsFuenfStudierendenWirdUebersprungen() {
+        Semester ws2024 = new Semester(2024, SemesterArt.WS);
+        Semester ss2025 = new Semester(2025, SemesterArt.SS);
+
+        // ws2024: 4 Studierende (< 5)
+        List<Studierende> studierende = new ArrayList<>();
+        for (int i = 1; i <= 4; i++) {
+            studierende.add(erstelleStudierende(i, ws2024));
+        }
+        // ss2025: 5 Studierende (>= 5)
+        for (int i = 5; i <= 9; i++) {
+            studierende.add(erstelleStudierende(i, ss2025));
+        }
+
+        when(studierendeRepository.findAllWithStartsemester()).thenReturn(studierende);
+        when(leistungRepository.findByStatusWithModulAndStudierende(Status.BESTANDEN)).thenReturn(List.of());
+
+        List<CohortStatisticsDto> ergebnis = statisticsService.getCohortStatistics();
+
+        assertThat(ergebnis).hasSize(1);
+        assertThat(ergebnis.getFirst().cohort()).isEqualTo("SS 2025");
+        assertThat(ergebnis.getFirst().studentCount()).isEqualTo(5);
     }
 
     @Test
@@ -142,11 +172,16 @@ class StatisticsServiceUnitTest {
         Semester ws2024 = new Semester(2024, SemesterArt.WS);
         Semester ss2025 = new Semester(2025, SemesterArt.SS);
 
-        Studierende s1 = erstelleStudierende(1, ws2025);
-        Studierende s2 = erstelleStudierende(2, ws2024);
-        Studierende s3 = erstelleStudierende(3, ss2025);
+        List<Studierende> studierende = new ArrayList<>();
+        int id = 1;
+        // Jede Kohorte benötigt mindestens 5 Personen
+        for (int i = 0; i < 5; i++) {
+            studierende.add(erstelleStudierende(id++, ws2025));
+            studierende.add(erstelleStudierende(id++, ws2024));
+            studierende.add(erstelleStudierende(id++, ss2025));
+        }
 
-        when(studierendeRepository.findAllWithStartsemester()).thenReturn(List.of(s1, s2, s3));
+        when(studierendeRepository.findAllWithStartsemester()).thenReturn(studierende);
         when(leistungRepository.findByStatusWithModulAndStudierende(Status.BESTANDEN)).thenReturn(List.of());
 
         List<CohortStatisticsDto> ergebnis = statisticsService.getCohortStatistics();

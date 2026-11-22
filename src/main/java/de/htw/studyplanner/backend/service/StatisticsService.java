@@ -41,7 +41,6 @@ public class StatisticsService {
      * Fachsemester 2: B21–B26 (6 Module)
      * Fachsemester 3: B31–B35 (5 Module)
      */
-    // Set.of() ist unveränderlich, daher kann man es als Konstante verwenden
     public static final Set<String> REQUIRED_MODULES_SEM_1_TO_3 = Set.of(
             "B11", "B12", "B13", "B14", "B15", "B16",
             "B21", "B22", "B23", "B24", "B25", "B26",
@@ -53,7 +52,10 @@ public class StatisticsService {
 
     /** Gesamt-Leistungspunkte des Bachelorstudiengangs für die Prozentrechnung (180 LP). */
     public static final double TOTAL_DEGREE_LP = 180.0;
-//   private static final int DECIMAL_PLACES = 1;
+
+    /** Mindestgröße einer Kohorte zur Wahrung der Anonymität. Kleinere Kohorten werden übersprungen. */
+    public static final int MIN_COHORT_SIZE = 5;
+
     private final StudierendeRepository studierendeRepository;
     private final LeistungRepository leistungRepository;
 
@@ -73,11 +75,11 @@ public class StatisticsService {
      *
      * <p>Die Sortierung der Kohorten erfolgt über {@link Semester#compareTo(Semester)} nach Jahr
      * und Semesterart (Sommersemester vor Wintersemester, nie über {@code semester_id}).
+     * Kohorten mit weniger als 5 Studierenden werden zum Schutz der Anonymität nicht ausgeliefert.
      * Bei leerer Datenbank wird eine leere Liste zurückgegeben.
      *
-     * @return Liste der Kohorten-Statistiken oder leere Liste, wenn keine Studierenden vorhanden sind
+     * @return Liste der Kohorten-Statistiken oder leere Liste, wenn keine auswertbaren Kohorten vorhanden sind
      */
-    // prüft, ob die Methode nur lesend auf die Datenbank zugreift, um Transaktionskontext zu optimieren
     @Transactional(readOnly = true)
     public List<CohortStatisticsDto> getCohortStatistics() {
         List<Studierende> alleStudierende = studierendeRepository.findAllWithStartsemester();
@@ -90,25 +92,27 @@ public class StatisticsService {
 
         // Nach Studierenden gruppieren: nutzendeId -> Liste bestandener Leistungen
         Map<Integer, List<Leistung>> leistungenNachStudierendem = bestandeneLeistungen.stream()
-                .filter(l -> l.getStudierende() != null && l.getStudierende().getNutzendeId() != null)
                 .collect(Collectors.groupingBy(l -> l.getStudierende().getNutzendeId()));
 
         // Studierende nach Startsemester (Kohorte) gruppieren.
         // TreeMap mit natürlicher Ordnung von Semester sortiert automatisch chronologisch nach Jahr und Art (E23)
         Map<Semester, List<Studierende>> kohortenMap = new TreeMap<>();
         for (Studierende s : alleStudierende) {
-            if (s.getStartsemester() != null) {
-                kohortenMap.computeIfAbsent(s.getStartsemester(), k -> new ArrayList<>()).add(s);
-            }
+            kohortenMap.computeIfAbsent(s.getStartsemester(), k -> new ArrayList<>()).add(s);
         }
-//        kohortenMap.entrySet().forEach(entry -> System.out.println("Kohorte: " + entry.getKey() + ", Anzahl Studierende: " + entry.getValue().size()));
+
         List<CohortStatisticsDto> ergebnis = new ArrayList<>();
 
         for (Map.Entry<Semester, List<Studierende>> entry : kohortenMap.entrySet()) {
             Semester startsemester = entry.getKey();
             List<Studierende> studierendeDerKohorte = entry.getValue();
             int studentCount = studierendeDerKohorte.size();
-//            System.out.println("Kohorte: " + startsemester + ", Anzahl Studierende: " + studentCount);
+
+            // Kohorten mit weniger als 5 Studierenden zum Schutz der Anonymität überspringen
+            if (studentCount < MIN_COHORT_SIZE) {
+                continue;
+            }
+
             int summeLp = 0;
             int completedSemesters1To3Count = 0;
             int bachelorThesisEligibleCount = 0;
@@ -120,10 +124,8 @@ public class StatisticsService {
                 Set<String> bestandeneModulCodes = new HashSet<>();
 
                 for (Leistung l : leistungen) {
-                    if (l.getModul() != null) {
-                        studentLp += l.getModul().getLp();
-                        bestandeneModulCodes.add(l.getModul().getCode());
-                    }
+                    studentLp += l.getModul().getLp();
+                    bestandeneModulCodes.add(l.getModul().getCode());
                 }
 
                 summeLp += studentLp;
@@ -138,7 +140,7 @@ public class StatisticsService {
                     }
                 }
             }
-// für die Kohorte Durchschnitts-LP und Durchschnitts-Fortschritt in Prozent berechnen
+
             double rawAverageLp = (double) summeLp / studentCount;
             double averageLp = roundToOneDecimal(rawAverageLp);
             double averageProgressPercent = roundToOneDecimal((rawAverageLp / TOTAL_DEGREE_LP) * 100.0);
@@ -162,7 +164,6 @@ public class StatisticsService {
      * @param value der ungerundete Wert
      * @return auf eine Nachkommastelle gerundeter Wert
      */
-    // stehht für die Rundung auf eine Nachkommastelle, wie in den Anforderungen gefordert
     private double roundToOneDecimal(double value) {
         return BigDecimal.valueOf(value)
                 .setScale(1, RoundingMode.HALF_UP)

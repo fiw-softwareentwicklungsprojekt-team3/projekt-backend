@@ -35,11 +35,12 @@ import de.htw.studyplanner.backend.repository.StudierendeRepository;
  * Integrationstests für {@link StatisticsService} (Ticket US-53a):
  * <ul>
  *   <li>Leere Datenbank liefert leere Liste</li>
- *   <li>Berechnung mit bekannter Test-Kohorte</li>
+ *   <li>Berechnung mit bekannter Test-Kohorte (mind. 5 Personen)</li>
  *   <li>Grenzfall 150 vs. 151 LP für Bachelorarbeits-Zulassung (StuPO § 12)</li>
  *   <li>Unvollständige Semester 1–3 (z. B. 16 von 17 Modulen)</li>
  *   <li>Ignorieren von {@link Status#NICHT_BESTANDEN} und {@link Status#BELEGT}</li>
  *   <li>Ignorieren von geplanten Modulen aus {@code plan_eintrag}</li>
+ *   <li>Mindest-Kohortengröße von 5 Personen zur Anonymisierung</li>
  *   <li>Chronologische Sortierung über {@link Semester#compareTo(Semester)} nach Jahr und Art</li>
  * </ul>
  */
@@ -182,21 +183,48 @@ class StatisticsServiceTest {
         Modul b15 = modulRepository.findById("B15").orElseThrow();
         planEintragRepository.save(new PlanEintrag(s4, b15, ws2024)); // ignoriert
 
+        // -----------------------------------------------------------------
+        // Student 5: 0 LP (ohne Leistungen), damit Kohortengröße >= 5 erreicht wird
+        // -----------------------------------------------------------------
+        Studierende s5 = erstelleStudierende(ws2024);
+
         List<CohortStatisticsDto> ergebnis = statisticsService.getCohortStatistics();
 
         assertThat(ergebnis).hasSize(1);
         CohortStatisticsDto ws24Stats = ergebnis.getFirst();
 
         assertThat(ws24Stats.cohort()).isEqualTo("WS 2024");
-        assertThat(ws24Stats.studentCount()).isEqualTo(4);
-        // LP-Summe = 150 + 151 + 150 + 11 = 462 -> 462 / 4 = 115.5
-        assertThat(ws24Stats.averageLp()).isEqualTo(115.5);
-        // Fortschritt = (115.5 / 180.0) * 100 = 64.1666... -> 64.2%
-        assertThat(ws24Stats.averageProgressPercent()).isEqualTo(64.2);
+        assertThat(ws24Stats.studentCount()).isEqualTo(5);
+        // LP-Summe = 150 + 151 + 150 + 11 + 0 = 462 -> 462 / 5 = 92.4
+        assertThat(ws24Stats.averageLp()).isEqualTo(92.4);
+        // Fortschritt = (92.4 / 180.0) * 100 = 51.333... -> 51.3%
+        assertThat(ws24Stats.averageProgressPercent()).isEqualTo(51.3);
         // Sem 1–3 komplett: nur s1 und s2
         assertThat(ws24Stats.completedSemesters1To3Count()).isEqualTo(2);
         // Bachelor-Zulassung: nur s2
         assertThat(ws24Stats.bachelorThesisEligibleCount()).isEqualTo(1);
+    }
+
+    @Test
+    void kohorteMitWenigerAlsFuenfStudierendenWirdWegenAnonymisierungUebersprungen() {
+        leistungRepository.deleteAll();
+        planEintragRepository.deleteAll();
+        studierendeRepository.deleteAll();
+
+        // Kohorte mit 4 Studierenden (< 5) -> wird nicht angezeigt
+        for (int i = 0; i < 4; i++) {
+            erstelleStudierende(ws2024);
+        }
+        // Kohorte mit 5 Studierenden (>= 5) -> wird angezeigt
+        for (int i = 0; i < 5; i++) {
+            erstelleStudierende(ss2025);
+        }
+
+        List<CohortStatisticsDto> ergebnis = statisticsService.getCohortStatistics();
+
+        assertThat(ergebnis).hasSize(1);
+        assertThat(ergebnis.getFirst().cohort()).isEqualTo("SS 2025");
+        assertThat(ergebnis.getFirst().studentCount()).isEqualTo(5);
     }
 
     @Test
@@ -205,10 +233,12 @@ class StatisticsServiceTest {
         planEintragRepository.deleteAll();
         studierendeRepository.deleteAll();
 
-        // Kohorten in unchronologischer Reihenfolge einfügen
-        erstelleStudierende(ws2025);
-        erstelleStudierende(ws2024);
-        erstelleStudierende(ss2025);
+        // Je Kohorte mindestens 5 Personen anlegen, damit sie nicht übersprungen werden
+        for (int i = 0; i < 5; i++) {
+            erstelleStudierende(ws2025);
+            erstelleStudierende(ws2024);
+            erstelleStudierende(ss2025);
+        }
 
         List<CohortStatisticsDto> ergebnis = statisticsService.getCohortStatistics();
 
