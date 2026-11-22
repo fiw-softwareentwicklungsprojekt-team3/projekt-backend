@@ -129,6 +129,18 @@ public class PlanService {
         return zuAntwort(planEintragRepository.save(eintrag));
     } 
 
+        /**
+     * Entfernt einen eigenen Planeintrag (US-39).
+     *
+     * <p>Abhängige Einträge bleiben stehen: Wird z. B. B16 gelöscht, bleibt B26 im Plan.
+     * Die Regeln werden erst beim nächsten Ändern wieder geprüft.
+     */
+    @Transactional
+    public void eintragLoeschen(Integer id) {
+        PlanEintrag eintrag = eigenerEintrag(id, aktuelleStudierende());
+        planEintragRepository.delete(eintrag);
+    }
+
     private Studierende aktuelleStudierende() {
         return studierendeRepository.findById(AktuellePerson.id())
                 .orElseThrow(() -> new UnauthorizedException(

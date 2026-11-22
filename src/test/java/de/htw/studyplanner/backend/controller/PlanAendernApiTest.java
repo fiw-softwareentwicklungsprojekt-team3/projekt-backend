@@ -20,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 
 import com.jayway.jsonpath.JsonPath;
 
@@ -83,6 +84,11 @@ class PlanAendernApiTest {
                 .content(json));
     }
 
+        private ResultActions deleteEntry(String token, int id) throws Exception {
+        return mockMvc.perform(delete("/api/plan/entries/" + id)
+                .header("Authorization", token));
+    }
+
     @Test
     void verschiebenAntwortetMit200UndAendertDasSemester() throws Exception {
         String token = neueStudierende();
@@ -119,5 +125,16 @@ class PlanAendernApiTest {
                 { "moduleCode": "B33", "semester": "WS 2027" }""")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("moduleCode"));
+    }
+
+        @Test
+    void loeschenAntwortetMit204UndEntferntDenEintrag() throws Exception {
+        String token = neueStudierende();
+        int id = b34Einplanen(token);
+
+        deleteEntry(token, id).andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/plan").header("Authorization", token))
+                .andExpect(jsonPath("$.semesters", hasSize(0)));
     }
 }

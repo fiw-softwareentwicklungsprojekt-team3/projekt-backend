@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import de.htw.studyplanner.backend.dto.ApiError;
 import de.htw.studyplanner.backend.dto.PlanEntryRequest;
@@ -415,5 +416,23 @@ public class PlanController {
     public PlanEntryResponse updateEntry(@PathVariable Integer id, @Valid @RequestBody PlanEntryRequest request) {
         return planService.eintragAendern(id, request);
     }
-    
+
+        /**
+     * Entfernt einen Planeintrag (US-39).
+     */
+    @DeleteMapping("/entries/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Planeintrag entfernen",
+            description = """
+                    Entfernt einen eigenen Eintrag. Andere Einträge bleiben unverändert
+                    (wird B16 gelöscht, bleibt B26 im Plan). Fremd oder nicht vorhanden ergibt `404`.""")
+    @ApiResponse(responseCode = "204", description = "Eintrag wurde entfernt", content = @Content)
+    @ApiResponse(responseCode = "401", description = "Kein oder ungültiges Token", content = @Content)
+    @ApiResponse(responseCode = "403", description = "Nur für Studierende", content = @Content)
+    @ApiResponse(responseCode = "404", description = "Eintrag existiert nicht oder gehört einer anderen Person",
+            content = @Content(schema = @Schema(implementation = ApiError.class)))
+    public void deleteEntry(@PathVariable Integer id) {
+        planService.eintragLoeschen(id);
+    }
+
 }
