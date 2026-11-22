@@ -75,32 +75,45 @@ public class PlanService {
      */
     @Transactional
     public PlanEntryResponse eintragAnlegen(PlanEntryRequest request) {
-        Studierende studierende = studierendeRepository.findById(AktuellePerson.id())
-                .orElseThrow(() -> new UnauthorizedException(
-                        "Dein Konto existiert nicht mehr. Bitte melde dich erneut an."));
+        Studierende studierende = aktuelleStudierende();
 
         Modul modul = modulRepository.findById(request.moduleCode())
                 .orElseThrow(() -> new NotFoundException(
                         "Modul mit dem Code " + request.moduleCode() + " wurde nicht gefunden."));
 
+        if (planEintragRepository.existsByStudierendeAndModul(studierende, modul)) {
+            throw new ConflictException(
+                    "Das Modul " + modul.getCode() + " ist bereits im Plan eingeplant. "
+                            + "Bitte nutze das Verschieben, um das Semester zu ändern.");
+        }
+
         Semester gelesen = semesterService.parse(request.semester());
         Wahlangebot wahlangebot = pruefeEintrag(studierende, modul, gelesen, request);
 
-        Semester semester = semesterService.findenOderNeuAnlegen(gelesen.getJahr(), gelesen.getArt());
-
-        PlanEintrag eintrag = new PlanEintrag(studierende, modul, semester);
-        eintrag.setWahlangebot(wahlangebot);
-        eintrag.setKursCode(leer(request.courseCode()) ? null : request.courseCode().trim());
-        eintrag.setKursTitel(leer(request.courseTitle()) ? null : request.courseTitle().trim());
+        PlanEintrag eintrag = new PlanEintrag(studierende, modul,
+                semesterService.findenOderNeuAnlegen(gelesen.getJahr(), gelesen.getArt()));
+        uebernehmeAuswahl(eintrag, wahlangebot, request);
 
         PlanEintrag gespeichert = planEintragRepository.save(eintrag);
         return zuAntwort(gespeichert);
     }
 
+    private Studierende aktuelleStudierende() {
+        return studierendeRepository.findById(AktuellePerson.id())
+                .orElseThrow(() -> new UnauthorizedException(
+                        "Dein Konto existiert nicht mehr. Bitte melde dich erneut an."));
+    }
+
+    private static void uebernehmeAuswahl(PlanEintrag eintrag, Wahlangebot wahlangebot,
+                                          PlanEntryRequest request) {
+        eintrag.setWahlangebot(wahlangebot);
+        eintrag.setKursCode(leer(request.courseCode()) ? null : request.courseCode().trim());
+        eintrag.setKursTitel(leer(request.courseTitle()) ? null : request.courseTitle().trim());
+    }
+
     /**
-     * Prüft alle fachlichen Regeln für das Einplanen eines Moduls:
+     * Prüft die fachlichen Regeln für einen Eintrag, beim Einplanen und beim Ändern gleich:
      * <ul>
-     *   <li>Modul darf noch nicht im Plan stehen (sonst 409 mit Hinweis aufs Verschieben)</li>
      *   <li>Semester darf nicht vor dem Startsemester liegen (E31)</li>
      *   <li>Turnus des Moduls muss zur Art des Plansemesters passen (E32)</li>
      *   <li>Bei {@code mit_auswahl = false} (feste Pflichtmodule wie B11, B33, B34, deren
@@ -113,12 +126,6 @@ public class PlanService {
      */
     private Wahlangebot pruefeEintrag(Studierende studierende, Modul modul,
                                       Semester gelesen, PlanEntryRequest request) {
-        if (planEintragRepository.existsByStudierendeAndModul(studierende, modul)) {
-            throw new ConflictException(
-                    "Das Modul " + modul.getCode() + " ist bereits im Plan eingeplant. "
-                            + "Bitte nutze das Verschieben, um das Semester zu ändern.");
-        }
-
         Semester startsemester = studierende.getStartsemester();
         if (semesterService.istFrueher(gelesen, startsemester)) {
             throw new FieldValidationException("semester",
