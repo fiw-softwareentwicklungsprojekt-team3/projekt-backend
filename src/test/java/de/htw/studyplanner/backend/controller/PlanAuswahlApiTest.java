@@ -19,6 +19,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
 import com.jayway.jsonpath.JsonPath;
 
@@ -158,5 +161,19 @@ class PlanAuswahlApiTest {
         einplanen(person, "B54", "WS 2027", "WP3")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors[0].field").value("offerCode"));
+    }
+
+        @Test
+    void loeschenVonB16LaesstB26ImPlan() throws Exception {
+        Person person = neueStudierende();
+        int b16 = id(einplanen(person, "B16", "WS 2026", "EN_B2.1").andExpect(status().isCreated()));
+        einplanen(person, "B26", "SS 2027", "EN_B2.2").andExpect(status().isCreated());
+
+        mockMvc.perform(delete("/api/plan/entries/" + b16).header("Authorization", person.token()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/plan").header("Authorization", person.token()))
+                .andExpect(jsonPath("$.semesters", hasSize(1)))
+                .andExpect(jsonPath("$.semesters[0].entries[0].moduleCode").value("B26"));
     }
 }
