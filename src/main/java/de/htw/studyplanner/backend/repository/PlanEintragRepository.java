@@ -1,6 +1,7 @@
 package de.htw.studyplanner.backend.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -45,4 +46,13 @@ public interface PlanEintragRepository extends JpaRepository<PlanEintrag, Intege
      * @return {@code true}, wenn das Modul bereits im Plan steht
      */
     boolean existsByStudierendeAndModul(Studierende studierende, Modul modul);
+
+        /**
+     * Lädt einen Planeintrag nur, wenn er der Person gehört (US-39).
+     *
+     * @param planEintragId ID des Eintrags
+     * @param studierende   angemeldete Person
+     * @return der Eintrag, oder leer, wenn es ihn nicht gibt oder er jemand anderem gehört
+     */
+    Optional<PlanEintrag> findByPlanEintragIdAndStudierende(Integer planEintragId, Studierende studierende);
 }

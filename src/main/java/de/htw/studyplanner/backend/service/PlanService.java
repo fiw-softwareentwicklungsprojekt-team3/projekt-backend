@@ -23,7 +23,7 @@ import de.htw.studyplanner.backend.repository.WahlangebotRepository;
 import de.htw.studyplanner.backend.security.AktuellePerson;
 
 /**
- * Fachlogik für den Studienplan einer Studierenden: Module für ein Semester einplanen.
+  * Fachlogik für den Studienplan einer Studierenden: Module einplanen und verschieben.
  *
  * <p>Die Person kommt immer aus dem Token ({@link AktuellePerson#id()}).
  * Voraussetzungen blockieren das Speichern nicht (E2), wohl aber das Startsemester (E31)
@@ -98,6 +98,37 @@ public class PlanService {
         return zuAntwort(gespeichert);
     }
 
+       /**
+     * Ändert Semester und/oder Auswahl eines eigenen Planeintrags (US-39).
+     *
+     * <p>Es gelten dieselben Regeln wie beim Einplanen, geprüft über dieselbe Methode
+     * ({@code pruefeEintrag}). Das Modul selbst lässt sich nicht ändern; dafür den Eintrag
+     * löschen und das neue Modul einplanen.
+     *
+     * @throws NotFoundException        wenn der Eintrag nicht existiert oder einer anderen Person gehört
+     * @throws FieldValidationException wenn der Modulcode abweicht oder eine Regel verletzt ist (400)
+     */
+    @Transactional
+    public PlanEntryResponse eintragAendern(Integer id, PlanEntryRequest request) {
+        Studierende studierende = aktuelleStudierende();
+        PlanEintrag eintrag = eigenerEintrag(id, studierende);
+        Modul modul = eintrag.getModul();
+
+        if (!modul.getCode().equals(request.moduleCode().trim())) {
+            throw new FieldValidationException("moduleCode",
+                    "Das Modul eines Eintrags kann nicht geändert werden. "
+                            + "Bitte lösche den Eintrag und plane " + request.moduleCode().trim() + " neu ein.");
+        }
+
+        Semester gelesen = semesterService.parse(request.semester());
+        Wahlangebot wahlangebot = pruefeEintrag(studierende, modul, gelesen, request);
+
+        eintrag.setSemester(semesterService.findenOderNeuAnlegen(gelesen.getJahr(), gelesen.getArt()));
+        uebernehmeAuswahl(eintrag, wahlangebot, request);
+
+        return zuAntwort(planEintragRepository.save(eintrag));
+    } 
+
     private Studierende aktuelleStudierende() {
         return studierendeRepository.findById(AktuellePerson.id())
                 .orElseThrow(() -> new UnauthorizedException(
@@ -109,6 +140,16 @@ public class PlanService {
         eintrag.setWahlangebot(wahlangebot);
         eintrag.setKursCode(leer(request.courseCode()) ? null : request.courseCode().trim());
         eintrag.setKursTitel(leer(request.courseTitle()) ? null : request.courseTitle().trim());
+    }
+
+        /**
+     * Lädt einen Eintrag der angemeldeten Person. Fremde und nicht vorhandene Einträge ergeben
+     * dieselbe 404-Meldung, damit niemand herausfinden kann, welche IDs es gibt (D3).
+     */
+    private PlanEintrag eigenerEintrag(Integer id, Studierende studierende) {
+        return planEintragRepository.findByPlanEintragIdAndStudierende(id, studierende)
+                .orElseThrow(() -> new NotFoundException(
+                        "Planeintrag mit der ID " + id + " wurde nicht gefunden."));
     }
 
     /**
