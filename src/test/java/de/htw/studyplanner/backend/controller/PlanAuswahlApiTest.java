@@ -139,4 +139,24 @@ class PlanAuswahlApiTest {
 
         einplanen(person, "B26", "SS 2027", "EN_B2.2").andExpect(status().isCreated());
     }
+
+        @Test
+    void gleichesWpAngebotWieB41ImPlanGibt400() throws Exception {
+        Person person = neueStudierende();
+        einplanen(person, "B41", "SS 2027", "WP7").andExpect(status().isCreated());
+
+        einplanen(person, "B54", "WS 2027", "WP7")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("offerCode"));
+    }
+
+    @Test
+    void gleichesWpAngebotWieBestandenesB41Gibt400() throws Exception {
+        Person person = neueStudierende();
+        bestanden(person, "B41", "WP3");
+
+        einplanen(person, "B54", "WS 2027", "WP3")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors[0].field").value("offerCode"));
+    }
 }

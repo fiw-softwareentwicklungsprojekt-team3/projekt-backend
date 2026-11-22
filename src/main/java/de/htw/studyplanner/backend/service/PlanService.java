@@ -42,6 +42,9 @@ public class PlanService {
     /** B16 und B26 müssen dieselbe Sprache haben (US-41). */
     private static final Map<String, String> SPRACH_PARTNER = Map.of("B16", "B26", "B26", "B16");
 
+    /** B41 und B54 dürfen nicht dasselbe WP-Angebot haben (US-41). */
+    private static final Map<String, String> WP_PARTNER = Map.of("B41", "B54", "B54", "B41");
+
     private final PlanEintragRepository planEintragRepository;
     private final StudierendeRepository studierendeRepository;
     private final ModulRepository modulRepository;
@@ -263,6 +266,7 @@ public class PlanService {
      * <ul>
      *   <li>B16 und B26 müssen dieselbe Sprache haben (Präfix vor dem Unterstrich,
      *       {@code EN_B2.1} und {@code EN_B2.2} ja, {@code EN_B2.1} und {@code FR_B2.1} nein)</li>
+     *   <li>B41 und B54 dürfen nicht dasselbe WP-Angebot haben</li>
      * </ul>
      * Weil Einplanen und Verschieben beide über {@code pruefeEintrag} laufen, gilt die Prüfung für beide.
      */
@@ -274,6 +278,17 @@ public class PlanService {
                     throw new FieldValidationException("offerCode",
                             modul.getCode() + " muss dieselbe Sprache haben wie " + sprachPartner
                                     + " (" + partnerAngebot.getCode() + ").");
+                }
+            }
+        }
+
+        String wpPartner = WP_PARTNER.get(modul.getCode());
+        if (wpPartner != null) {
+            for (Wahlangebot partnerAngebot : angeboteVon(studierende, wpPartner)) {
+                if (partnerAngebot.getCode().equals(gewaehlt.getCode())) {
+                    throw new FieldValidationException("offerCode",
+                            "Das Wahlangebot " + gewaehlt.getCode() + " ist schon für "
+                                    + wpPartner + " gewählt.");
                 }
             }
         }
