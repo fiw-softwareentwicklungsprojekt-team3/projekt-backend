@@ -1,5 +1,9 @@
 package de.htw.studyplanner.backend.service;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -9,13 +13,16 @@ import de.htw.studyplanner.backend.exception.ConflictException;
 import de.htw.studyplanner.backend.exception.FieldValidationException;
 import de.htw.studyplanner.backend.exception.NotFoundException;
 import de.htw.studyplanner.backend.exception.UnauthorizedException;
+import de.htw.studyplanner.backend.model.Leistung;
 import de.htw.studyplanner.backend.model.Modul;
 import de.htw.studyplanner.backend.model.PlanEintrag;
 import de.htw.studyplanner.backend.model.Semester;
 import de.htw.studyplanner.backend.model.SemesterArt;
+import de.htw.studyplanner.backend.model.Status;
 import de.htw.studyplanner.backend.model.Studierende;
 import de.htw.studyplanner.backend.model.Turnus;
 import de.htw.studyplanner.backend.model.Wahlangebot;
+import de.htw.studyplanner.backend.repository.LeistungRepository;
 import de.htw.studyplanner.backend.repository.ModulRepository;
 import de.htw.studyplanner.backend.repository.PlanEintragRepository;
 import de.htw.studyplanner.backend.repository.StudierendeRepository;
@@ -23,7 +30,7 @@ import de.htw.studyplanner.backend.repository.WahlangebotRepository;
 import de.htw.studyplanner.backend.security.AktuellePerson;
 
 /**
-  * Fachlogik für den Studienplan einer Studierenden: Module einplanen und verschieben.
+ * Fachlogik für den Studienplan einer Studierenden: Module einplanen, verschieben und entfernen.
  *
  * <p>Die Person kommt immer aus dem Token ({@link AktuellePerson#id()}).
  * Voraussetzungen blockieren das Speichern nicht (E2), wohl aber das Startsemester (E31)
@@ -32,12 +39,16 @@ import de.htw.studyplanner.backend.security.AktuellePerson;
 @Service
 public class PlanService {
 
+    /** B16 und B26 müssen dieselbe Sprache haben (US-41). */
+    private static final Map<String, String> SPRACH_PARTNER = Map.of("B16", "B26", "B26", "B16");
+
     private final PlanEintragRepository planEintragRepository;
     private final StudierendeRepository studierendeRepository;
     private final ModulRepository modulRepository;
     private final WahlangebotRepository wahlangebotRepository;
     private final SemesterService semesterService;
     private final OfferService offerService;
+    private final LeistungRepository leistungRepository;
 
     /**
      * Erstellt den Service.
@@ -48,19 +59,22 @@ public class PlanService {
      * @param wahlangebotRepository Zugriff auf die Wahlangebote
      * @param semesterService       liest, vergleicht und legt Semester an
      * @param offerService          weiß, welche Wahlangebote zu welchem Modul passen
+     * @param leistungRepository    Zugriff auf die Leistungen (bestandene Angebote)
      */
     public PlanService(PlanEintragRepository planEintragRepository,
                        StudierendeRepository studierendeRepository,
                        ModulRepository modulRepository,
                        WahlangebotRepository wahlangebotRepository,
                        SemesterService semesterService,
-                       OfferService offerService) {
+                       OfferService offerService,
+                       LeistungRepository leistungRepository) {
         this.planEintragRepository = planEintragRepository;
         this.studierendeRepository = studierendeRepository;
         this.modulRepository = modulRepository;
         this.wahlangebotRepository = wahlangebotRepository;
         this.semesterService = semesterService;
         this.offerService = offerService;
+        this.leistungRepository = leistungRepository;
     }
 
     /**
@@ -98,7 +112,7 @@ public class PlanService {
         return zuAntwort(gespeichert);
     }
 
-       /**
+    /**
      * Ändert Semester und/oder Auswahl eines eigenen Planeintrags (US-39).
      *
      * <p>Es gelten dieselben Regeln wie beim Einplanen, geprüft über dieselbe Methode
@@ -127,9 +141,9 @@ public class PlanService {
         uebernehmeAuswahl(eintrag, wahlangebot, request);
 
         return zuAntwort(planEintragRepository.save(eintrag));
-    } 
+    }
 
-        /**
+    /**
      * Entfernt einen eigenen Planeintrag (US-39).
      *
      * <p>Abhängige Einträge bleiben stehen: Wird z. B. B16 gelöscht, bleibt B26 im Plan.
@@ -154,7 +168,7 @@ public class PlanService {
         eintrag.setKursTitel(leer(request.courseTitle()) ? null : request.courseTitle().trim());
     }
 
-        /**
+    /**
      * Lädt einen Eintrag der angemeldeten Person. Fremde und nicht vorhandene Einträge ergeben
      * dieselbe 404-Meldung, damit niemand herausfinden kann, welche IDs es gibt (D3).
      */
@@ -175,6 +189,8 @@ public class PlanService {
      *   <li>Nur bei {@code mit_auswahl = true} (B16, B26, B41, B54, B63, B64) dürfen
      *       {@code offerCode}, {@code courseCode} und {@code courseTitle} optional angegeben
      *       werden; ein angegebenes {@code offerCode} muss in {@code wahlangebot} existieren</li>
+     *   <li>Das Angebot darf nicht im Widerspruch zum Partner-Modul stehen (US-41),
+     *       siehe {@code pruefeAuswahlKonflikte}</li>
      * </ul>
      */
     private Wahlangebot pruefeEintrag(Studierende studierende, Modul modul,
@@ -234,10 +250,58 @@ public class PlanService {
                         "Das Wahlangebot " + wahlangebot.getCode() + " passt nicht zu Modul "
                                 + modul.getCode() + ".");
             }
+            pruefeAuswahlKonflikte(studierende, modul, wahlangebot);
             return wahlangebot;
         }
 
         return null;
+    }
+
+    /**
+     * Prüft das gewählte Angebot gegen das Partner-Modul, im eigenen Plan und in einer
+     * bestandenen Leistung (US-41):
+     * <ul>
+     *   <li>B16 und B26 müssen dieselbe Sprache haben (Präfix vor dem Unterstrich,
+     *       {@code EN_B2.1} und {@code EN_B2.2} ja, {@code EN_B2.1} und {@code FR_B2.1} nein)</li>
+     * </ul>
+     * Weil Einplanen und Verschieben beide über {@code pruefeEintrag} laufen, gilt die Prüfung für beide.
+     */
+    private void pruefeAuswahlKonflikte(Studierende studierende, Modul modul, Wahlangebot gewaehlt) {
+        String sprachPartner = SPRACH_PARTNER.get(modul.getCode());
+        if (sprachPartner != null) {
+            for (Wahlangebot partnerAngebot : angeboteVon(studierende, sprachPartner)) {
+                if (!sprache(partnerAngebot).equals(sprache(gewaehlt))) {
+                    throw new FieldValidationException("offerCode",
+                            modul.getCode() + " muss dieselbe Sprache haben wie " + sprachPartner
+                                    + " (" + partnerAngebot.getCode() + ").");
+                }
+            }
+        }
+    }
+
+    /**
+     * Angebote, die für ein Modul schon feststehen: aus dem eigenen Plan und aus einer
+     * bestandenen Leistung. Leer, wenn es keins gibt.
+     */
+    private List<Wahlangebot> angeboteVon(Studierende studierende, String modulCode) {
+        List<Wahlangebot> angebote = new ArrayList<>();
+        modulRepository.findById(modulCode).ifPresent(partner -> {
+            planEintragRepository.findByStudierendeAndModul(studierende, partner)
+                    .map(PlanEintrag::getWahlangebot)
+                    .ifPresent(angebote::add);
+            leistungRepository.findByStudierendeAndModul(studierende, partner)
+                    .filter(leistung -> leistung.getStatus() == Status.BESTANDEN)
+                    .map(Leistung::getWahlangebot)
+                    .ifPresent(angebote::add);
+        });
+        return angebote;
+    }
+
+    /** Sprache eines Angebots: der Teil vor dem Unterstrich, z. B. {@code EN} bei {@code EN_B2.1}. */
+    private static String sprache(Wahlangebot angebot) {
+        String code = angebot.getCode();
+        int unterstrich = code.indexOf('_');
+        return unterstrich < 0 ? code : code.substring(0, unterstrich);
     }
 
     private PlanEntryResponse zuAntwort(PlanEintrag eintrag) {

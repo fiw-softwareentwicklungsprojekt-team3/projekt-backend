@@ -55,4 +55,15 @@ public interface PlanEintragRepository extends JpaRepository<PlanEintrag, Intege
      * @return der Eintrag, oder leer, wenn es ihn nicht gibt oder er jemand anderem gehört
      */
     Optional<PlanEintrag> findByPlanEintragIdAndStudierende(Integer planEintragId, Studierende studierende);
+
+        /**
+     * Lädt den Eintrag einer Person für ein Modul. Es gibt höchstens einen,
+     * weil die Tabelle UNIQUE auf Person und Modul hat.
+     *
+     * @param studierende Person
+     * @param modul       Modul
+     * @return der Eintrag, oder leer, wenn das Modul nicht im Plan steht
+     */
+    Optional<PlanEintrag> findByStudierendeAndModul(Studierende studierende, Modul modul);
+    
 }
