@@ -87,6 +87,23 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.responses['403']").exists())
                 .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.security[0].bearerAuth").exists());
     }
+
+        @Test
+    void planEintragAendernUndLoeschenSindDokumentiert() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(jsonPath("$.paths['/api/plan/entries/{id}'].put.responses['200']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries/{id}'].put.responses['400']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries/{id}'].put.responses['401']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries/{id}'].put.responses['403']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries/{id}'].put.responses['404']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries/{id}'].put.security[0].bearerAuth").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries/{id}'].delete.responses['204']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries/{id}'].delete.responses['401']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries/{id}'].delete.responses['403']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries/{id}'].delete.responses['404']").exists())
+                .andExpect(jsonPath("$.paths['/api/plan/entries/{id}'].delete.security[0].bearerAuth").exists());
+    }
+
 // Prüft, dass die Health-Endpoint keine fremden Fehlercodes enthält (z. B. 409 Conflict)
     @Test
     void healthHatKeineFremdenFehlercodes() throws Exception {
