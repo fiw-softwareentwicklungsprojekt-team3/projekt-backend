@@ -73,7 +73,7 @@ public class SecurityConfig {
                         )
                         .permitAll()
                         // hasRole("X") prüft die Authority "ROLE_X" aus dem JwtAuthenticationFilter.
-                        .requestMatchers("/api/plan/**", "/api/results/**")
+                        .requestMatchers("/api/plan/**", "/api/results/**", "/api/progress/**")
                         .hasRole("STUDIERENDE")
                         .requestMatchers("/api/statistics/**")
                         .hasRole("PROFESSOR_IN")

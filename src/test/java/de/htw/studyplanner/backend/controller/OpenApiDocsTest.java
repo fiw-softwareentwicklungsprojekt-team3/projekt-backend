@@ -49,7 +49,12 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/plan'].get").exists())
                 .andExpect(jsonPath("$.paths['/api/plan/entries'].post").exists())
                 .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get").exists())
-                .andExpect(jsonPath("$.components.schemas.CohortStatisticsDto").exists());
+                .andExpect(jsonPath("$.components.schemas.CohortStatisticsDto").exists())
+                .andExpect(jsonPath("$.paths['/api/progress'].get").exists())
+                .andExpect(jsonPath("$.components.schemas.ProgressResponse.properties.openModules").exists())
+                .andExpect(jsonPath("$.components.schemas.OpenModuleDto.properties.lockReasons").exists())
+                .andExpect(jsonPath("$.components.schemas.ProgressResponse.properties.bachelorThesisNeedsApproval").exists())
+                .andExpect(jsonPath("$.components.schemas.CohortStatisticsDto.properties.bachelorThesisWithApprovalCount").exists());
     }
 // Prüft, dass die dokumentierten Statuscodes in der OpenAPI-Spezifikation enthalten sind
     @Test
@@ -85,7 +90,11 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.responses['200']").exists())
                 .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.responses['401']").exists())
                 .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.responses['403']").exists())
-                .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.security[0].bearerAuth").exists());
+                .andExpect(jsonPath("$.paths['/api/statistics/cohorts'].get.security[0].bearerAuth").exists())
+                .andExpect(jsonPath("$.paths['/api/progress'].get.responses['200']").exists())
+                .andExpect(jsonPath("$.paths['/api/progress'].get.responses['401']").exists())
+                .andExpect(jsonPath("$.paths['/api/progress'].get.responses['403']").exists())
+                .andExpect(jsonPath("$.paths['/api/progress'].get.security[0].bearerAuth").exists());
     }
 // Prüft, dass die Health-Endpoint keine fremden Fehlercodes enthält (z. B. 409 Conflict)
     @Test
