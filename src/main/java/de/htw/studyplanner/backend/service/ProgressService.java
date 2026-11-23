@@ -38,13 +38,11 @@ import de.htw.studyplanner.backend.security.AktuellePerson;
  * notwendige Voraussetzung nicht bestanden ist oder die LP unter {@code min_lp − toleranz_lp}
  * liegen. Im Toleranzbereich (z. B. 141–150 LP bei der Bachelorarbeit) ist es frei, weil eine
  * Zulassung durch den Prüfungsausschuss möglich ist. Die einzelne Voraussetzung prüft der
- * {@link PlanPruefer}, damit Plan und Fortschritt dieselben Regeln haben.
+ * {@link PlanPruefer}, damit Plan und Fortschritt dieselben Regeln haben. Die Zulassung zur
+ * Bachelorarbeit bestimmt der {@link BachelorarbeitPruefer}, genau wie in der Statistik.
  */
 @Service
 public class ProgressService {
-
-    /** Modulcode der Bachelorarbeit. */
-    static final String BACHELORARBEIT = "B66";
 
     /** Sortierung der offenen Module: nach Fachsemester, dann nach Code. */
     private static final Comparator<Modul> STUDIENPLAN_REIHENFOLGE =
@@ -55,6 +53,7 @@ public class ProgressService {
     private final ModulRepository modulRepository;
     private final VoraussetzungRepository voraussetzungRepository;
     private final PlanPruefer planPruefer;
+    private final BachelorarbeitPruefer bachelorarbeitPruefer;
 
     /**
      * Erstellt den Service.
@@ -64,23 +63,26 @@ public class ProgressService {
      * @param modulRepository         Zugriff auf den Modulkatalog
      * @param voraussetzungRepository Zugriff auf die Voraussetzungen
      * @param planPruefer             prüft eine einzelne Voraussetzung
+     * @param bachelorarbeitPruefer   bestimmt die Stufe der Zulassung zur Bachelorarbeit
      */
     public ProgressService(StudierendeRepository studierendeRepository,
                            LeistungRepository leistungRepository,
                            ModulRepository modulRepository,
                            VoraussetzungRepository voraussetzungRepository,
-                           PlanPruefer planPruefer) {
+                           PlanPruefer planPruefer,
+                           BachelorarbeitPruefer bachelorarbeitPruefer) {
         this.studierendeRepository = studierendeRepository;
         this.leistungRepository = leistungRepository;
         this.modulRepository = modulRepository;
         this.voraussetzungRepository = voraussetzungRepository;
         this.planPruefer = planPruefer;
+        this.bachelorarbeitPruefer = bachelorarbeitPruefer;
     }
 
     /**
      * Berechnet den Fortschritt der angemeldeten Person.
      *
-     * @return LP, Prozent, Notenschnitt, Zulassung zur Bachelorarbeit und offene Pflichtmodule
+     * @return LP, Prozent, Notenschnitt, Stufe der Zulassung zur Bachelorarbeit und offene Pflichtmodule
      * @throws UnauthorizedException wenn es das Konto aus dem Token nicht mehr gibt
      */
     @Transactional(readOnly = true)
@@ -107,15 +109,17 @@ public class ProgressService {
                         leistungNachModul.get(m.getCode())))
                 .toList();
 
-        boolean bachelorarbeitErlaubt = bestanden(BACHELORARBEIT, leistungNachModul)
-                || sperrgruende(BACHELORARBEIT, notwendigNachModul, leistungNachModul, earnedLp).isEmpty();
+        BachelorarbeitPruefer.Stufe bachelorarbeit = bachelorarbeitPruefer.stufe(
+                notwendigNachModul.getOrDefault(BachelorarbeitPruefer.BACHELORARBEIT, List.of()),
+                leistungNachModul);
 
         return new ProgressResponse(
                 earnedLp,
                 LpRechner.GESAMT_LP,
                 LpRechner.fortschrittProzent(earnedLp),
                 notenschnitt(leistungNachModul.values()),
-                bachelorarbeitErlaubt,
+                bachelorarbeit == BachelorarbeitPruefer.Stufe.REGULAER,
+                bachelorarbeit == BachelorarbeitPruefer.Stufe.MIT_ZULASSUNG,
                 offen);
     }
 

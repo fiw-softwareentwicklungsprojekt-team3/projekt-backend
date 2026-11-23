@@ -3,10 +3,10 @@ package de.htw.studyplanner.backend.service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
@@ -18,6 +18,7 @@ import de.htw.studyplanner.backend.model.Leistung;
 import de.htw.studyplanner.backend.model.Semester;
 import de.htw.studyplanner.backend.model.Status;
 import de.htw.studyplanner.backend.model.Studierende;
+import de.htw.studyplanner.backend.model.Voraussetzung;
 import de.htw.studyplanner.backend.repository.LeistungRepository;
 import de.htw.studyplanner.backend.repository.StudierendeRepository;
 
@@ -30,7 +31,11 @@ import de.htw.studyplanner.backend.repository.StudierendeRepository;
  *
  * <p>Um N+1-Abfragen zu verhindern, werden alle Daten in genau zwei Sammelabfragen über
  * {@link StudierendeRepository#findAllWithStartsemester()} und
- * {@link LeistungRepository#findByStatusWithModulAndStudierende(Status)} geladen.
+ * {@link LeistungRepository#findByStatusWithModulAndStudierende(Status)} geladen, dazu einmal die
+ * Regeln der Bachelorarbeit.
+ *
+ * <p>LP zählt der gemeinsame {@link LpRechner}, die Zulassung zur Bachelorarbeit der
+ * {@link BachelorarbeitPruefer} (US-58). So rechnen Statistik und Fortschritts-Übersicht gleich.
  */
 @Service
 public class StatisticsService {
@@ -47,27 +52,26 @@ public class StatisticsService {
             "B31", "B32", "B33", "B34", "B35"
     );
 
-    /** Mindestanzahl an bestandenen Leistungspunkten für die Zulassung zur Bachelorarbeit (StuPO § 12). */
-    public static final int MIN_LP_BACHELOR_THESIS = 151;
-
-    /** Gesamt-Leistungspunkte des Bachelorstudiengangs für die Prozentrechnung (180 LP). */
-    public static final double TOTAL_DEGREE_LP = 180.0;
-
     /** Mindestgröße einer Kohorte zur Wahrung der Anonymität. Kleinere Kohorten werden übersprungen. */
     public static final int MIN_COHORT_SIZE = 5;
 
     private final StudierendeRepository studierendeRepository;
     private final LeistungRepository leistungRepository;
+    private final BachelorarbeitPruefer bachelorarbeitPruefer;
 
     /**
      * Erstellt den Service mit den benötigten Repositories.
      *
      * @param studierendeRepository Repository für Studierendendaten
-     * @param leistungRepository   Repository für Leistungsdaten
+     * @param leistungRepository    Repository für Leistungsdaten
+     * @param bachelorarbeitPruefer bestimmt die Stufe der Zulassung zur Bachelorarbeit
      */
-    public StatisticsService(StudierendeRepository studierendeRepository, LeistungRepository leistungRepository) {
+    public StatisticsService(StudierendeRepository studierendeRepository,
+                             LeistungRepository leistungRepository,
+                             BachelorarbeitPruefer bachelorarbeitPruefer) {
         this.studierendeRepository = studierendeRepository;
         this.leistungRepository = leistungRepository;
+        this.bachelorarbeitPruefer = bachelorarbeitPruefer;
     }
 
     /**
@@ -89,6 +93,7 @@ public class StatisticsService {
 
         // Alle bestandenen Leistungen mit initialisiertem Modul und Studierenden in einer Abfrage laden (kein N+1)
         List<Leistung> bestandeneLeistungen = leistungRepository.findByStatusWithModulAndStudierende(Status.BESTANDEN);
+        List<Voraussetzung> bachelorarbeitRegeln = bachelorarbeitPruefer.regeln();
 
         // Nach Studierenden gruppieren: nutzendeId -> Liste bestandener Leistungen
         Map<Integer, List<Leistung>> leistungenNachStudierendem = bestandeneLeistungen.stream()
@@ -116,34 +121,31 @@ public class StatisticsService {
             int summeLp = 0;
             int completedSemesters1To3Count = 0;
             int bachelorThesisEligibleCount = 0;
+            int bachelorThesisWithApprovalCount = 0;
 
             for (Studierende s : studierendeDerKohorte) {
-                List<Leistung> leistungen = leistungenNachStudierendem.getOrDefault(s.getNutzendeId(), List.of());
+                Map<String, Leistung> leistungNachModul = leistungenNachStudierendem
+                        .getOrDefault(s.getNutzendeId(), List.of()).stream()
+                        .collect(Collectors.toMap(l -> l.getModul().getCode(), Function.identity()));
 
-                int studentLp = 0;
-                Set<String> bestandeneModulCodes = new HashSet<>();
-
-                for (Leistung l : leistungen) {
-                    studentLp += l.getModul().getLp();
-                    bestandeneModulCodes.add(l.getModul().getCode());
-                }
-
-                summeLp += studentLp;
+                summeLp += LpRechner.bestandeneLp(leistungNachModul.values());
 
                 // Alle 17 Pflichtmodule aus Fachsemester 1–3 bestanden?
-                boolean sem1To3Completed = bestandeneModulCodes.containsAll(REQUIRED_MODULES_SEM_1_TO_3);
-                if (sem1To3Completed) {
+                if (leistungNachModul.keySet().containsAll(REQUIRED_MODULES_SEM_1_TO_3)) {
                     completedSemesters1To3Count++;
-                    // Zulassungsvoraussetzung Bachelorarbeit: Sem 1–3 vollständig UND mind. 151 LP (StuPO § 12)
-                    if (studentLp >= MIN_LP_BACHELOR_THESIS) {
-                        bachelorThesisEligibleCount++;
-                    }
+                }
+
+                // Bachelorarbeit: regulär ab 151 LP, mit Zulassung ab 141 LP (Regeln von B66 aus der DB)
+                switch (bachelorarbeitPruefer.stufe(bachelorarbeitRegeln, leistungNachModul)) {
+                    case REGULAER -> bachelorThesisEligibleCount++;
+                    case MIT_ZULASSUNG -> bachelorThesisWithApprovalCount++;
+                    case NICHT_ZUGELASSEN -> { }
                 }
             }
 
             double rawAverageLp = (double) summeLp / studentCount;
             double averageLp = roundToOneDecimal(rawAverageLp);
-            double averageProgressPercent = roundToOneDecimal((rawAverageLp / TOTAL_DEGREE_LP) * 100.0);
+            double averageProgressPercent = roundToOneDecimal((rawAverageLp / LpRechner.GESAMT_LP) * 100.0);
 
             ergebnis.add(new CohortStatisticsDto(
                     startsemester.label(),
@@ -151,7 +153,8 @@ public class StatisticsService {
                     averageLp,
                     averageProgressPercent,
                     completedSemesters1To3Count,
-                    bachelorThesisEligibleCount
+                    bachelorThesisEligibleCount,
+                    bachelorThesisWithApprovalCount
             ));
         }
 

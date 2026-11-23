@@ -40,7 +40,7 @@ public class ProgressController {
     /**
      * Liefert den eigenen Studienfortschritt.
      *
-     * @return LP, Prozent, Notenschnitt, Zulassung zur Bachelorarbeit und offene Pflichtmodule
+     * @return LP, Prozent, Notenschnitt, Stufe der Zulassung zur Bachelorarbeit und offene Pflichtmodule
      */
     @GetMapping
     @Operation(summary = "Eigenen Fortschritt abrufen",
@@ -51,7 +51,10 @@ public class ProgressController {
                     auf eine Nachkommastelle abgeschnitten; null, wenn es noch keine Note gibt.
                     openModules: alle Pflichtmodule (art = P), die nicht bestanden sind, nach Fachsemester und Code.
                     locked: eine notwendige Voraussetzung ist nicht bestanden oder die LP liegen unter
-                    min_lp − toleranz_lp. bachelorThesisEligible: B66 ist nicht gesperrt.""")
+                    min_lp − toleranz_lp.
+                    bachelorThesisEligible: Sem. 1–3 bestanden und mindestens 151 LP (regulär).
+                    bachelorThesisNeedsApproval: Sem. 1–3 bestanden und 141–150 LP, nur mit Zulassung
+                    durch den Prüfungsausschuss. Höchstens eins von beiden ist true.""")
     @ApiResponse(responseCode = "200", description = "Fortschritt der angemeldeten Person",
             content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = ProgressResponse.class),
@@ -62,6 +65,7 @@ public class ProgressController {
                               "progressPercent": 11.1,
                               "averageGrade": 2.3,
                               "bachelorThesisEligible": false,
+                              "bachelorThesisNeedsApproval": false,
                               "openModules": [
                                 {
                                   "moduleCode": "B11",

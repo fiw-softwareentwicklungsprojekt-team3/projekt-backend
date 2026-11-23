@@ -52,7 +52,9 @@ class OpenApiDocsTest {
                 .andExpect(jsonPath("$.components.schemas.CohortStatisticsDto").exists())
                 .andExpect(jsonPath("$.paths['/api/progress'].get").exists())
                 .andExpect(jsonPath("$.components.schemas.ProgressResponse.properties.openModules").exists())
-                .andExpect(jsonPath("$.components.schemas.OpenModuleDto.properties.lockReasons").exists());
+                .andExpect(jsonPath("$.components.schemas.OpenModuleDto.properties.lockReasons").exists())
+                .andExpect(jsonPath("$.components.schemas.ProgressResponse.properties.bachelorThesisNeedsApproval").exists())
+                .andExpect(jsonPath("$.components.schemas.CohortStatisticsDto.properties.bachelorThesisWithApprovalCount").exists());
     }
 // Prüft, dass die dokumentierten Statuscodes in der OpenAPI-Spezifikation enthalten sind
     @Test

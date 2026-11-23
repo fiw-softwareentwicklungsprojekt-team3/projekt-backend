@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 
@@ -18,19 +19,69 @@ import de.htw.studyplanner.backend.model.Semester;
 import de.htw.studyplanner.backend.model.SemesterArt;
 import de.htw.studyplanner.backend.model.Status;
 import de.htw.studyplanner.backend.model.Studierende;
+import de.htw.studyplanner.backend.model.Voraussetzung;
+import de.htw.studyplanner.backend.model.VoraussetzungsArt;
 import de.htw.studyplanner.backend.repository.LeistungRepository;
+import de.htw.studyplanner.backend.repository.PlanEintragRepository;
+import de.htw.studyplanner.backend.repository.SemesterRepository;
 import de.htw.studyplanner.backend.repository.StudierendeRepository;
+import de.htw.studyplanner.backend.repository.VoraussetzungRepository;
 
 /**
  * Schneller Unit-Test für {@link StatisticsService} ohne Docker und Spring-Kontext.
  * Testet die Berechnungslogik, Rundung und Sortierung isoliert über Mocks.
+ *
+ * <p>Die Regeln der Bachelorarbeit (B66) sind wie in der DB nachgebaut: die 17 Module aus
+ * Sem. 1–3 und 151 LP mit 10 LP Toleranz. Geprüft werden sie vom echten
+ * {@link BachelorarbeitPruefer} mit echtem {@link PlanPruefer}.
  */
 class StatisticsServiceUnitTest {
 
     private final StudierendeRepository studierendeRepository = mock(StudierendeRepository.class);
     private final LeistungRepository leistungRepository = mock(LeistungRepository.class);
-    private final StatisticsService statisticsService =
-            new StatisticsService(studierendeRepository, leistungRepository);
+    private final VoraussetzungRepository voraussetzungRepository = b66Regeln();
+    private final PlanPruefer planPruefer = new PlanPruefer(
+            mock(PlanEintragRepository.class), leistungRepository, voraussetzungRepository,
+            new SemesterService(mock(SemesterRepository.class)));
+    private final StatisticsService statisticsService = new StatisticsService(
+            studierendeRepository, leistungRepository,
+            new BachelorarbeitPruefer(voraussetzungRepository, planPruefer));
+
+    /** Baut die notwendigen Voraussetzungen von B66 wie in V2__stupo_seed.sql nach. */
+    private static VoraussetzungRepository b66Regeln() {
+        AtomicInteger id = new AtomicInteger();
+        List<Voraussetzung> regeln = new ArrayList<>();
+        regeln.add(lpRegel(id.incrementAndGet(), 151, 10));
+        for (String code : StatisticsService.REQUIRED_MODULES_SEM_1_TO_3) {
+            regeln.add(modulRegel(id.incrementAndGet(), code));
+        }
+        VoraussetzungRepository repository = mock(VoraussetzungRepository.class);
+        when(repository.findByModul_Code("B66")).thenReturn(regeln);
+        return repository;
+    }
+
+    /** Eine LP-Voraussetzung (NOTWENDIG). */
+    private static Voraussetzung lpRegel(int id, int minLp, int toleranzLp) {
+        Voraussetzung v = mock(Voraussetzung.class);
+        when(v.getId()).thenReturn(id);
+        when(v.getArt()).thenReturn(VoraussetzungsArt.NOTWENDIG);
+        when(v.getMinLp()).thenReturn(minLp);
+        when(v.getToleranzLp()).thenReturn(toleranzLp);
+        return v;
+    }
+
+    /** Eine Modul-Voraussetzung (NOTWENDIG). */
+    private static Voraussetzung modulRegel(int id, String modulCode) {
+        Modul modul = mock(Modul.class);
+        when(modul.getCode()).thenReturn(modulCode);
+        Voraussetzung v = mock(Voraussetzung.class);
+        when(v.getId()).thenReturn(id);
+        when(v.getArt()).thenReturn(VoraussetzungsArt.NOTWENDIG);
+        when(v.getVorausgesetztesModul()).thenReturn(modul);
+        // Mockito liefert für Integer sonst 0 statt null, dann wäre es eine LP-Regel
+        when(v.getMinLp()).thenReturn(null);
+        return v;
+    }
 
     private static Modul erstelleModul(String code, int lp) {
         Modul m = mock(Modul.class);
@@ -139,6 +190,7 @@ class StatisticsServiceUnitTest {
         assertThat(dto.averageProgressPercent()).isEqualTo(51.3);
         assertThat(dto.completedSemesters1To3Count()).isEqualTo(2); // nur s1 und s2
         assertThat(dto.bachelorThesisEligibleCount()).isEqualTo(1); // nur s2 (>= 151 LP und Sem 1-3)
+        assertThat(dto.bachelorThesisWithApprovalCount()).isEqualTo(1); // nur s1 (141–150 LP und Sem 1-3)
     }
 
     @Test

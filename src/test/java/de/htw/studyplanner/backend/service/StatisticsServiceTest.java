@@ -36,7 +36,8 @@ import de.htw.studyplanner.backend.repository.StudierendeRepository;
  * <ul>
  *   <li>Leere Datenbank liefert leere Liste</li>
  *   <li>Berechnung mit bekannter Test-Kohorte (mind. 5 Personen)</li>
- *   <li>Grenzfall 150 vs. 151 LP für Bachelorarbeits-Zulassung (StuPO § 12)</li>
+ *   <li>Grenzfall 150 vs. 151 LP für Bachelorarbeits-Zulassung (StuPO § 12): 150 LP zählt als
+ *       „mit Zulassung durch den Prüfungsausschuss“ (141–150 LP, RStPO § 25)</li>
  *   <li>Unvollständige Semester 1–3 (z. B. 16 von 17 Modulen)</li>
  *   <li>Ignorieren von {@link Status#NICHT_BESTANDEN} und {@link Status#BELEGT}</li>
  *   <li>Ignorieren von geplanten Modulen aus {@code plan_eintrag}</li>
@@ -113,7 +114,7 @@ class StatisticsServiceTest {
         // -----------------------------------------------------------------
         // Student 1: 150 LP, Sem 1–3 komplett
         // Sem 1–3 (90 LP) + B43 (20 LP) + B41, B42, B51, B52, B53, B54, B55, B61 (8 * 5 = 40 LP) = 150 LP
-        // Grenzfall: Genau 150 LP (< 151 LP) -> bachelorThesisEligible = false!
+        // Grenzfall: Genau 150 LP (< 151 LP) -> nicht regulär, aber mit Zulassung (141–150 LP)
         // -----------------------------------------------------------------
         Studierende s1 = erstelleStudierende(ws2024);
         for (String code : StatisticsService.REQUIRED_MODULES_SEM_1_TO_3) {
@@ -201,8 +202,10 @@ class StatisticsServiceTest {
         assertThat(ws24Stats.averageProgressPercent()).isEqualTo(51.3);
         // Sem 1–3 komplett: nur s1 und s2
         assertThat(ws24Stats.completedSemesters1To3Count()).isEqualTo(2);
-        // Bachelor-Zulassung: nur s2
+        // Bachelor-Zulassung regulär (ab 151 LP): nur s2
         assertThat(ws24Stats.bachelorThesisEligibleCount()).isEqualTo(1);
+        // mit Zulassung durch den Prüfungsausschuss (141–150 LP): nur s1; s3 fehlt B34
+        assertThat(ws24Stats.bachelorThesisWithApprovalCount()).isEqualTo(1);
     }
 
     @Test

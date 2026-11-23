@@ -176,6 +176,7 @@ class ProgressApiTest {
         assertThat(antwort.get("progressPercent").asDouble()).isZero();
         assertThat(antwort.get("averageGrade").isNull()).isTrue();
         assertThat(antwort.get("bachelorThesisEligible").asBoolean()).isFalse();
+        assertThat(antwort.get("bachelorThesisNeedsApproval").asBoolean()).isFalse();
 
         List<String> codes = offeneCodes(antwort);
         assertThat(codes).hasSize(PFLICHTMODULE)
@@ -268,7 +269,22 @@ class ProgressApiTest {
     }
 
     @Test
-    void bachelorarbeit_imToleranzbereichErlaubt() throws Exception {
+    void bachelorarbeit_abMinLpRegulaerErlaubt() throws Exception {
+        Konto konto = neueStudierende();
+        // 90 (Sem. 1–3) + 5 (B41) + 20 (B43) + 31 (Sem. 5) + 14 (B61–B64) = 160 LP
+        bestanden(konto, Stream.of(SEMESTER_1_BIS_3, List.of("B41", "B43"), SEMESTER_5,
+                List.of("B61", "B62", "B63", "B64")).flatMap(List::stream).toList());
+
+        JsonNode antwort = fortschritt(konto);
+
+        assertThat(antwort.get("earnedLp").asInt()).isEqualTo(160);
+        assertThat(antwort.get("bachelorThesisEligible").asBoolean()).isTrue();
+        assertThat(antwort.get("bachelorThesisNeedsApproval").asBoolean()).isFalse();
+        assertThat(offenesModul(antwort, "B66").get("locked").asBoolean()).isFalse();
+    }
+
+    @Test
+    void bachelorarbeit_imToleranzbereichNurMitZulassung() throws Exception {
         Konto konto = neueStudierende();
         // 90 (Sem. 1–3) + 20 (B43) + 31 (Sem. 5) = 141 LP: untere Grenze des Toleranzbereichs
         bestanden(konto, Stream.of(SEMESTER_1_BIS_3, List.of("B43"), SEMESTER_5).flatMap(List::stream).toList());
@@ -276,7 +292,10 @@ class ProgressApiTest {
         JsonNode antwort = fortschritt(konto);
 
         assertThat(antwort.get("earnedLp").asInt()).isEqualTo(141);
-        assertThat(antwort.get("bachelorThesisEligible").asBoolean()).isTrue();
+        // nicht regulär (unter 151 LP), aber mit Zulassung durch den Prüfungsausschuss möglich
+        assertThat(antwort.get("bachelorThesisEligible").asBoolean()).isFalse();
+        assertThat(antwort.get("bachelorThesisNeedsApproval").asBoolean()).isTrue();
+        // im Toleranzbereich ist B66 nicht gesperrt
         assertThat(offenesModul(antwort, "B66").get("locked").asBoolean()).isFalse();
         // Kolloquium braucht B66 und 177 LP.
         assertThat(gruende(antwort, "B65")).containsExactly(
@@ -294,6 +313,7 @@ class ProgressApiTest {
 
         assertThat(antwort.get("earnedLp").asInt()).isEqualTo(136);
         assertThat(antwort.get("bachelorThesisEligible").asBoolean()).isFalse();
+        assertThat(antwort.get("bachelorThesisNeedsApproval").asBoolean()).isFalse();
         assertThat(gruende(antwort, "B66")).containsExactly(
                 "Mindestens 141 LP nötig (151 LP, ab 141 LP mit Zulassung durch den "
                         + "Prüfungsausschuss), du hast 136 LP");
@@ -311,6 +331,7 @@ class ProgressApiTest {
 
         assertThat(antwort.get("earnedLp").asInt()).isEqualTo(154);
         assertThat(antwort.get("bachelorThesisEligible").asBoolean()).isFalse();
+        assertThat(antwort.get("bachelorThesisNeedsApproval").asBoolean()).isFalse();
         assertThat(gruende(antwort, "B66")).containsExactly("Programmierung 1 fehlt noch");
     }
 
