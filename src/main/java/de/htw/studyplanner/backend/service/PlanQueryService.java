@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,10 +29,7 @@ import de.htw.studyplanner.backend.repository.StudierendeRepository;
 import de.htw.studyplanner.backend.security.AktuellePerson;
 
 /**
- * Lesende Seite des Studienplans: liefert {@code GET /api/plan} (US-38, E30).
- *
- * <p>Schreibende Operationen stehen in {@link PlanService}. Die Person kommt immer aus
- * dem Token ({@link AktuellePerson#id()}).
+ * Liefert den Studienplan der angemeldeten Person.
  */
 @Service
 public class PlanQueryService {
@@ -40,97 +38,128 @@ public class PlanQueryService {
     private final StudierendeRepository studierendeRepository;
     private final PlanPruefer planPruefer;
     private final SemesterService semesterService;
+    private final int maxLpPerSemester;
 
-    /**
-     * Erstellt den Service.
-     *
-     * @param planEintragRepository Zugriff auf die Tabelle plan_eintrag
-     * @param studierendeRepository Zugriff auf die Tabelle studierende (Startsemester)
-     * @param planPruefer           berechnet die Verstöße gegen Voraussetzungen
-     * @param semesterService       vergleicht Semester zeitlich
-     */
     public PlanQueryService(
             PlanEintragRepository planEintragRepository,
             StudierendeRepository studierendeRepository,
             PlanPruefer planPruefer,
-            SemesterService semesterService) {
+            SemesterService semesterService,
+            @Value("${studyplanner.plan.max-lp-per-semester:30}") int maxLpPerSemester) {
+
         this.planEintragRepository = planEintragRepository;
         this.studierendeRepository = studierendeRepository;
         this.planPruefer = planPruefer;
         this.semesterService = semesterService;
+        this.maxLpPerSemester = maxLpPerSemester;
     }
 
     /**
-     * Liefert den ganzen Plan der angemeldeten Person, nach Semestern gruppiert,
-     * mit den aktuell berechneten Verstößen je Eintrag.
+     * Liefert den vollständigen Studienplan nach Semestern gruppiert.
      *
-     * <ul>
-     *   <li>Semester zeitlich sortiert über {@link Semester#compareTo(Semester)},
-     *       innerhalb eines Semesters nach Modulcode</li>
-     *   <li>Nur Semester mit Einträgen; Lücken füllt das Frontend</li>
-     *   <li>LP-Summen und Verstöße werden hier berechnet, nicht gespeichert (E30)</li>
-     *   <li>{@code prerequisitesMet} ist {@code false}, sobald ein {@code FEHLER} vorliegt;
-     *       {@code WARNUNG}en ändern daran nichts</li>
-     *   <li>Leerer Plan: {@code semesters = []} und {@code totalLp = 0}</li>
-     * </ul>
-     *
-     * <p>Die Einträge werden mit Modul, Semester und Wahlangebot in einer Abfrage geladen
-     * (JOIN FETCH), damit weder die Antwort noch die Planprüfung N+1-Abfragen auslöst.
-     *
-     * @return der Plan der angemeldeten Person
+     * @return Studienplan mit LP-, SWS- und Grenzwertinformationen
      */
     @Transactional(readOnly = true)
     public PlanResponse eigenerPlan() {
         Integer personId = AktuellePerson.id();
-        Studierende studierende = studierendeRepository.findMitStartsemester(personId)
+
+        Studierende studierende = studierendeRepository
+                .findMitStartsemester(personId)
                 .orElseThrow(() -> new UnauthorizedException(
                         "Dein Konto existiert nicht mehr. Bitte melde dich erneut an."));
 
-        // Zuerst laden: So liegen Modul, Semester und Wahlangebot schon im
-        // Persistenzkontext, wenn der PlanPruefer den Plan erneut liest.
-        List<PlanEintrag> eintraege = planEintragRepository.findPlanMitDetails(personId);
+        List<PlanEintrag> eintraege =
+                planEintragRepository.findPlanMitDetails(personId);
 
         Map<String, List<PlanVerstoss>> verstoesseNachModul =
-                planPruefer.pruefe(studierende, LocalDate.now()).stream()
-                        .collect(Collectors.groupingBy(PlanVerstoss::geprueftesModul));
+                planPruefer.pruefe(studierende, LocalDate.now())
+                        .stream()
+                        .collect(Collectors.groupingBy(
+                                PlanVerstoss::geprueftesModul));
 
-        Map<Semester, List<PlanEintrag>> nachSemester = new TreeMap<>(semesterService::vergleiche);
+        Map<Semester, List<PlanEintrag>> nachSemester =
+                new TreeMap<>(semesterService::vergleiche);
+
         for (PlanEintrag eintrag : eintraege) {
-            nachSemester.computeIfAbsent(eintrag.getSemester(), s -> new ArrayList<>()).add(eintrag);
+            nachSemester
+                    .computeIfAbsent(eintrag.getSemester(), ignored -> new ArrayList<>())
+                    .add(eintrag);
         }
 
         List<PlanSemesterDto> semester = new ArrayList<>();
         int gesamtLp = 0;
-        for (Map.Entry<Semester, List<PlanEintrag>> gruppe : nachSemester.entrySet()) {
-            List<PlanEntryDto> dtos = gruppe.getValue().stream()
-                    .sorted(Comparator.comparing(e -> e.getModul().getCode()))
-                    .map(e -> zuPlanEintrag(e,
-                            verstoesseNachModul.getOrDefault(e.getModul().getCode(), List.of())))
+
+        for (Map.Entry<Semester, List<PlanEintrag>> gruppe
+                : nachSemester.entrySet()) {
+
+            List<PlanEntryDto> dtos = gruppe.getValue()
+                    .stream()
+                    .sorted(Comparator.comparing(
+                            eintrag -> eintrag.getModul().getCode()))
+                    .map(eintrag -> zuPlanEintrag(
+                            eintrag,
+                            verstoesseNachModul.getOrDefault(
+                                    eintrag.getModul().getCode(),
+                                    List.of())))
                     .toList();
-            int lp = dtos.stream().mapToInt(PlanEntryDto::lp).sum();
+
+            int lp = dtos
+                    .stream()
+                    .mapToInt(PlanEntryDto::lp)
+                    .sum();
+
+            int sws = gruppe.getValue()
+                    .stream()
+                    .mapToInt(eintrag -> {
+                        Integer vorlesungsSws =
+                                eintrag.getModul().getSwsVorlesung();
+
+                        int swsVorlesung =
+                                vorlesungsSws == null ? 0 : vorlesungsSws;
+
+                        return swsVorlesung
+                                + eintrag.getModul().getSwsUebung();
+                    })
+                    .sum();
+
+            boolean lpLimitExceeded = lp > maxLpPerSemester;
+
             gesamtLp += lp;
-            semester.add(new PlanSemesterDto(gruppe.getKey().label(), lp, dtos));
+
+            semester.add(new PlanSemesterDto(
+                    gruppe.getKey().label(),
+                    lp,
+                    sws,
+                    lpLimitExceeded,
+                    dtos));
         }
 
-        return new PlanResponse(studierende.getStartsemester().label(), gesamtLp, semester);
+        return new PlanResponse(
+                studierende.getStartsemester().label(),
+                gesamtLp,
+                maxLpPerSemester,
+                semester);
     }
 
-    /**
-     * Baut aus einem Planeintrag und seinen Verstößen den Eintrag für die Antwort.
-     *
-     * @param eintrag    Planeintrag mit geladenem Modul und Wahlangebot
-     * @param verstoesse Verstöße des PlanPruefers für genau dieses Modul, leer wenn keine
-     * @return der Eintrag mit {@code prerequisitesMet} und {@code violations}
-     */
-    private static PlanEntryDto zuPlanEintrag(PlanEintrag eintrag, List<PlanVerstoss> verstoesse) {
+    private static PlanEntryDto zuPlanEintrag(
+            PlanEintrag eintrag,
+            List<PlanVerstoss> verstoesse) {
+
         Modul modul = eintrag.getModul();
         Wahlangebot angebot = eintrag.getWahlangebot();
 
-        List<PlanViolationResponse> violations = verstoesse.stream()
-                .map(v -> new PlanViolationResponse(v.schwere(), v.fehlendeVoraussetzung(), v.meldung()))
+        List<PlanViolationResponse> violations = verstoesse
+                .stream()
+                .map(verstoss -> new PlanViolationResponse(
+                        verstoss.schwere(),
+                        verstoss.fehlendeVoraussetzung(),
+                        verstoss.meldung()))
                 .toList();
-        boolean prerequisitesMet = verstoesse.stream()
-                .noneMatch(v -> v.schwere() == PruefSchwere.FEHLER);
+
+        boolean prerequisitesMet = verstoesse
+                .stream()
+                .noneMatch(verstoss ->
+                        verstoss.schwere() == PruefSchwere.FEHLER);
 
         return new PlanEntryDto(
                 eintrag.getPlanEintragId(),

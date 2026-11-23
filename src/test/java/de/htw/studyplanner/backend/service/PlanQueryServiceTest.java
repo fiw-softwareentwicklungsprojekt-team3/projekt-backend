@@ -19,6 +19,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import de.htw.studyplanner.backend.dto.PlanEntryDto;
 import de.htw.studyplanner.backend.dto.PlanResponse;
+import de.htw.studyplanner.backend.dto.PlanSemesterDto;
 import de.htw.studyplanner.backend.dto.PlanVerstoss;
 import de.htw.studyplanner.backend.dto.PruefSchwere;
 import de.htw.studyplanner.backend.exception.UnauthorizedException;
@@ -45,7 +46,11 @@ class PlanQueryServiceTest {
     private final FakePlanPruefer planPruefer = new FakePlanPruefer();
 
     private final PlanQueryService planQueryService = new PlanQueryService(
-            planEintragRepository, studierendeRepository, planPruefer, new SemesterService(null));
+            planEintragRepository,
+            studierendeRepository,
+            planPruefer,
+            new SemesterService(null),
+            30);
 
     private final Studierende studierende = new Studierende(
             new Nutzende("student@student.htw-berlin.de", "hash", Rolle.STUDIERENDE),
@@ -211,8 +216,12 @@ class PlanQueryServiceTest {
 
         assertThat(plan.startSemester()).isEqualTo("WS 2026");
         assertThat(plan.totalLp()).isEqualTo(21);
-        assertThat(plan.semesters()).extracting("semester").containsExactly("SS 2027", "WS 2027");
-        assertThat(plan.semesters()).extracting("lp").containsExactly(5, 16);
+        assertThat(plan.maxLpPerSemester()).isEqualTo(30);
+        assertThat(plan.semesters()).extracting(PlanSemesterDto::semester).containsExactly("SS 2027", "WS 2027");
+        assertThat(plan.semesters()).extracting(PlanSemesterDto::lp).containsExactly(5, 16);
+        assertThat(plan.semesters()).extracting(PlanSemesterDto::sws).containsExactly(0, 0);
+        assertThat(plan.semesters()).extracting(PlanSemesterDto::lpLimitExceeded)
+                .containsExactly(false, false);
         assertThat(plan.semesters().get(1).entries()).extracting(PlanEntryDto::moduleCode)
                 .containsExactly("B11", "B34");
     }
@@ -226,6 +235,46 @@ class PlanQueryServiceTest {
 
         assertThat(plan.totalLp()).isZero();
         assertThat(plan.semesters()).isEmpty();
+    }
+
+    @Test
+    void genauDreißigLpErzeugenKeineWarnung() {
+        when(studierendeRepository.findMitStartsemester(42)).thenReturn(Optional.of(studierende));
+
+        List<PlanEintrag> eintraege = List.of(
+                new PlanEintrag(studierende, modul("B11", 6), new Semester(2026, SemesterArt.WS)),
+                new PlanEintrag(studierende, modul("B12", 5), new Semester(2026, SemesterArt.WS)),
+                new PlanEintrag(studierende, modul("B13", 5), new Semester(2026, SemesterArt.WS)),
+                new PlanEintrag(studierende, modul("B14", 5), new Semester(2026, SemesterArt.WS)),
+                new PlanEintrag(studierende, modul("B15", 5), new Semester(2026, SemesterArt.WS)),
+                new PlanEintrag(studierende, modul("B16", 4), new Semester(2026, SemesterArt.WS)));
+
+        when(planEintragRepository.findPlanMitDetails(42)).thenReturn(eintraege);
+
+        PlanSemesterDto semester = planQueryService.eigenerPlan().semesters().get(0);
+
+        assertThat(semester.lp()).isEqualTo(30);
+        assertThat(semester.lpLimitExceeded()).isFalse();
+    }
+
+    @Test
+    void einunddreißigLpErzeugenWarnung() {
+        when(studierendeRepository.findMitStartsemester(42)).thenReturn(Optional.of(studierende));
+
+        List<PlanEintrag> eintraege = List.of(
+                new PlanEintrag(studierende, modul("B11", 6), new Semester(2026, SemesterArt.WS)),
+                new PlanEintrag(studierende, modul("B12", 5), new Semester(2026, SemesterArt.WS)),
+                new PlanEintrag(studierende, modul("B13", 5), new Semester(2026, SemesterArt.WS)),
+                new PlanEintrag(studierende, modul("B14", 5), new Semester(2026, SemesterArt.WS)),
+                new PlanEintrag(studierende, modul("B15", 5), new Semester(2026, SemesterArt.WS)),
+                new PlanEintrag(studierende, modul("B31", 5), new Semester(2026, SemesterArt.WS)));
+
+        when(planEintragRepository.findPlanMitDetails(42)).thenReturn(eintraege);
+
+        PlanSemesterDto semester = planQueryService.eigenerPlan().semesters().get(0);
+
+        assertThat(semester.lp()).isEqualTo(31);
+        assertThat(semester.lpLimitExceeded()).isTrue();
     }
 
     /** Prüft, dass der Plan genau einen Eintrag hat, und liefert ihn. */
