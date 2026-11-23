@@ -397,8 +397,12 @@ public class PlanController {
         return planService.eintragAnlegen(request);
     }
 
-        /**
+           /**
      * Verschiebt einen Planeintrag in ein anderes Semester und/oder ändert die Auswahl (US-39).
+     *
+     * @param id      ID des Planeintrags
+     * @param request derselbe Body wie beim Einplanen; {@code moduleCode} muss gleich bleiben
+     * @return der geänderte Planeintrag
      */
     @PutMapping("/entries/{id}")
     @Operation(summary = "Planeintrag verschieben oder Auswahl ändern",
@@ -417,8 +421,10 @@ public class PlanController {
         return planService.eintragAendern(id, request);
     }
 
-        /**
-     * Entfernt einen Planeintrag (US-39).
+    /**
+     * Entfernt einen Planeintrag (US-39). Antwortet mit 204 ohne Inhalt.
+     *
+     * @param id ID des Planeintrags
      */
     @DeleteMapping("/entries/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -434,5 +440,4 @@ public class PlanController {
     public void deleteEntry(@PathVariable Integer id) {
         planService.eintragLoeschen(id);
     }
-
 }

@@ -119,11 +119,17 @@ public class PlanService {
      * Ändert Semester und/oder Auswahl eines eigenen Planeintrags (US-39).
      *
      * <p>Es gelten dieselben Regeln wie beim Einplanen, geprüft über dieselbe Methode
-     * ({@code pruefeEintrag}). Das Modul selbst lässt sich nicht ändern; dafür den Eintrag
-     * löschen und das neue Modul einplanen.
+     * ({@code pruefeEintrag}). Das Modul selbst lässt sich nicht ändern (E37); dafür den
+     * Eintrag löschen und das neue Modul einplanen.
      *
-     * @throws NotFoundException        wenn der Eintrag nicht existiert oder einer anderen Person gehört
-     * @throws FieldValidationException wenn der Modulcode abweicht oder eine Regel verletzt ist (400)
+     * @param id      ID des Planeintrags
+     * @param request Modulcode (muss gleich bleiben), neues Semester und Auswahl-Angaben
+     * @return der geänderte Planeintrag
+     * @throws NotFoundException              wenn der Eintrag nicht existiert oder einer anderen
+     *                                        Person gehört (404 in beiden Fällen, E36)
+     * @throws InvalidSemesterFormatException wenn das Semesterformat ungültig ist (400)
+     * @throws FieldValidationException       wenn der Modulcode abweicht oder eine fachliche
+     *                                        Regel verletzt ist (400)
      */
     @Transactional
     public PlanEntryResponse eintragAendern(Integer id, PlanEntryRequest request) {
@@ -149,8 +155,12 @@ public class PlanService {
     /**
      * Entfernt einen eigenen Planeintrag (US-39).
      *
-     * <p>Abhängige Einträge bleiben stehen: Wird z. B. B16 gelöscht, bleibt B26 im Plan.
+     * <p>Abhängige Einträge bleiben stehen (E38): Wird z. B. B16 gelöscht, bleibt B26 im Plan.
      * Die Regeln werden erst beim nächsten Ändern wieder geprüft.
+     *
+     * @param id ID des Planeintrags
+     * @throws NotFoundException wenn der Eintrag nicht existiert oder einer anderen Person
+     *                           gehört (404 in beiden Fällen, E36)
      */
     @Transactional
     public void eintragLoeschen(Integer id) {
@@ -173,7 +183,7 @@ public class PlanService {
 
     /**
      * Lädt einen Eintrag der angemeldeten Person. Fremde und nicht vorhandene Einträge ergeben
-     * dieselbe 404-Meldung, damit niemand herausfinden kann, welche IDs es gibt (D3).
+     * dieselbe 404-Meldung, damit niemand herausfinden kann, welche IDs es gibt (E36).
      */
     private PlanEintrag eigenerEintrag(Integer id, Studierende studierende) {
         return planEintragRepository.findByPlanEintragIdAndStudierende(id, studierende)
@@ -262,7 +272,7 @@ public class PlanService {
 
     /**
      * Prüft das gewählte Angebot gegen das Partner-Modul, im eigenen Plan und in einer
-     * bestandenen Leistung (US-41):
+     * bestandenen Leistung (US-41, E39):
      * <ul>
      *   <li>B16 und B26 müssen dieselbe Sprache haben (Präfix vor dem Unterstrich,
      *       {@code EN_B2.1} und {@code EN_B2.2} ja, {@code EN_B2.1} und {@code FR_B2.1} nein)</li>
