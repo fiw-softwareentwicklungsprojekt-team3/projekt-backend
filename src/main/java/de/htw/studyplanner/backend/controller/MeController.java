@@ -29,7 +29,7 @@ import jakarta.validation.Valid;
  *
  * <p>Der Controller leitet nur weiter, die Logik steht in {@link MeService}.
  *
- * <p>{@code @SecurityRequirement} sorgt dafür, dass Swagger nach „Authorize" das Token
+ * <p>{@code @SecurityRequirement} sorgt dafür, dass Swagger nach „Authorize“ das Token
  * mitschickt. Ohne die Angabe sendet Swagger die Anfrage ohne Token und bekommt 401.
  */
 @RestController
@@ -83,8 +83,8 @@ public class MeController {
     /**
      * Ändert das Startsemester der angemeldeten Studierenden.
      *
-     * <p>Nur Studierende dürfen ihr Startsemester ändern. Professor_innen erhalten 400.
-     * Das neue Semester darf nicht nach einem vorhandenen Planeintrag liegen.
+     * <p>Nur Studierende dürfen ihr Startsemester ändern. Professor_innen erhalten 403.
+     * Das neue Semester darf nicht nach einem vorhandenen Planeintrag oder einer Leistung liegen.
      *
      * @param request neues Startsemester im Format "WS JJJJ"
      * @return aktualisierte Kontodaten
@@ -93,9 +93,9 @@ public class MeController {
     @Operation(summary = "Startsemester ändern",
             description = """
                     Ändert das Startsemester der angemeldeten Studierenden.
-                    Nur Studierende können ihr Startsemester ändern (Professor_innen: 400).
-                    Das neue Startsemester darf nicht nach einem vorhandenen Planeintrag liegen,
-                    sonst wird 400 mit einer Fehlermeldung am Feld startSemester zurückgegeben.""")
+                    Nur Studierende können ihr Startsemester ändern (Professor_innen: 403).
+                    Das neue Startsemester darf nicht nach einem vorhandenen Planeintrag oder einer
+                    Leistung liegen, sonst wird 400 mit einer Fehlermeldung am Feld startSemester zurückgegeben.""")
     @ApiResponse(responseCode = "200", description = "Startsemester erfolgreich geändert",
             content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = MeResponse.class),
@@ -107,11 +107,14 @@ public class MeController {
                               "startSemester": "WS 2025"
                             }""")))
     @ApiResponse(responseCode = "400",
-            description = "Eingabe ungültig, z. B. falsches Format oder Planeintrag liegt davor",
+            description = "Eingabe ungültig, z. B. falsches Format oder Planeintrag bzw. Leistung liegt davor",
             content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = ApiError.class)))
     @ApiResponse(responseCode = "401",
             description = "Kein Token oder Token ungültig",
+            content = @Content)
+    @ApiResponse(responseCode = "403",
+            description = "Nur Studierende dürfen ihr Startsemester ändern (Professor_innen erhalten 403)",
             content = @Content)
     public MeResponse updateMe(@Valid @RequestBody UpdateMeRequest request) {
         return meService.startsemesterAendern(request);

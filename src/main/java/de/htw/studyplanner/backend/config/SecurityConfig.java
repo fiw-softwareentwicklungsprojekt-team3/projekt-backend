@@ -77,8 +77,10 @@ public class SecurityConfig {
                         .hasRole("STUDIERENDE")
                         .requestMatchers("/api/statistics/**")
                         .hasRole("PROFESSOR_IN")
+                        .requestMatchers(HttpMethod.PUT, "/api/me")
+                        .hasRole("STUDIERENDE")
                         // Alle angemeldeten Rollen.
-                        .requestMatchers("/api/modules/**", "/api/offers/**", "/api/me", "/api/me/**")
+                        .requestMatchers("/api/modules/**", "/api/offers/**", "/api/me")
                         .authenticated()
                         .anyRequest()
                         .authenticated())
