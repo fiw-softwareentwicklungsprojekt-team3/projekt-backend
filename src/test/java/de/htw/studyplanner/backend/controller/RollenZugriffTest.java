@@ -70,6 +70,25 @@ class RollenZugriffTest {
     }
 
     @Test
+    void studierendeSindAufProgressNichtVerboten() throws Exception {
+        // Wie bei /api/plan: Die Person aus bearer(...) steht nicht in der Datenbank (401).
+        // Den Inhalt prüft ProgressApiTest.
+        assertThat(statusVon("/api/progress", Rolle.STUDIERENDE)).isNotEqualTo(403);
+    }
+
+    @Test
+    void professorBekommtAufProgress403() throws Exception {
+        mockMvc.perform(get("/api/progress").header("Authorization", bearer(Rolle.PROFESSOR_IN)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void ohneTokenBekommtAufProgress401() throws Exception {
+        mockMvc.perform(get("/api/progress"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void studierendeBekommenAufStatistics403() throws Exception {
         mockMvc.perform(get("/api/statistics").header("Authorization", bearer(Rolle.STUDIERENDE)))
                 .andExpect(status().isForbidden());

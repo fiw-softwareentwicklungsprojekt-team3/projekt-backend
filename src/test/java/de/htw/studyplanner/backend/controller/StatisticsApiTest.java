@@ -62,7 +62,7 @@ class StatisticsApiTest {
     @Test
     void professorinErhaelt200MitErwartetemJsonSchema() throws Exception {
         when(statisticsService.getCohortStatistics()).thenReturn(List.of(
-                new CohortStatisticsDto("WS 2024", 45, 62.4, 34.7, 28, 0)
+                new CohortStatisticsDto("WS 2024", 45, 62.4, 34.7, 28, 0, 3)
         ));
 
         String token = tokenFuerRolle(Rolle.PROFESSOR_IN);
@@ -76,7 +76,8 @@ class StatisticsApiTest {
                 .andExpect(jsonPath("$[0].averageLp").value(62.4))
                 .andExpect(jsonPath("$[0].averageProgressPercent").value(34.7))
                 .andExpect(jsonPath("$[0].completedSemesters1To3Count").value(28))
-                .andExpect(jsonPath("$[0].bachelorThesisEligibleCount").value(0));
+                .andExpect(jsonPath("$[0].bachelorThesisEligibleCount").value(0))
+                .andExpect(jsonPath("$[0].bachelorThesisWithApprovalCount").value(3));
     }
 // Prüft, dass eine leere Datenbank oder keine Daten 200 OK mit einer leeren Liste liefert
     @Test
@@ -115,7 +116,7 @@ class StatisticsApiTest {
     @Test
     void antwortIstVollstaendigAnonymisiert() throws Exception {
         when(statisticsService.getCohortStatistics()).thenReturn(List.of(
-                new CohortStatisticsDto("WS 2024", 45, 62.4, 34.7, 28, 0)
+                new CohortStatisticsDto("WS 2024", 45, 62.4, 34.7, 28, 0, 3)
         ));
 
         String token = tokenFuerRolle(Rolle.PROFESSOR_IN);

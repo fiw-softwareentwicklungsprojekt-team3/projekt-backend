@@ -24,7 +24,7 @@ class StatisticsControllerTest {
     @Test
     void getCohortStatisticsLiefertErgebnisAusService() {
         List<CohortStatisticsDto> mockData = List.of(
-                new CohortStatisticsDto("WS 2024", 45, 62.4, 34.7, 28, 0)
+                new CohortStatisticsDto("WS 2024", 45, 62.4, 34.7, 28, 0, 0)
         );
         when(statisticsService.getCohortStatistics()).thenReturn(mockData);
 

@@ -2,7 +2,6 @@ package de.htw.studyplanner.backend.service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -17,6 +16,7 @@ import de.htw.studyplanner.backend.dto.PlanVerstoss;
 import de.htw.studyplanner.backend.dto.PruefSchwere;
 import de.htw.studyplanner.backend.model.Leistung;
 import de.htw.studyplanner.backend.model.PlanEintrag;
+import de.htw.studyplanner.backend.model.Semester;
 import de.htw.studyplanner.backend.model.Status;
 import de.htw.studyplanner.backend.model.Studierende;
 import de.htw.studyplanner.backend.model.Voraussetzung;
@@ -36,6 +36,14 @@ public class PlanPruefer {
     private final VoraussetzungRepository voraussetzungRepository;
     private final SemesterService semesterService;
 
+    /**
+     * Erstellt den Prüfer.
+     *
+     * @param planEintragRepository   Zugriff auf die Planeinträge
+     * @param leistungRepository      Zugriff auf die Leistungen
+     * @param voraussetzungRepository Zugriff auf die Voraussetzungen
+     * @param semesterService         vergleicht Semester
+     */
     public PlanPruefer(
             PlanEintragRepository planEintragRepository,
             LeistungRepository leistungRepository,
@@ -89,26 +97,17 @@ public class PlanPruefer {
                 continue;
             }
 
-        List<Voraussetzung> modulVoraussetzungen =
+            List<Voraussetzung> modulVoraussetzungen =
                     voraussetzungenNachModul.getOrDefault(modulCode, List.of());
 
-        for (Voraussetzung voraussetzung : modulVoraussetzungen) {
-                PlanVerstoss verstoss = null;
-
-                if (voraussetzung.getMinLp() != null) {
-                    verstoss = pruefeLp(
-                            geplanterEintrag,
-                            voraussetzung,
-                            planNachModul,
-                            leistungNachModul);
-                } else if (voraussetzung.getVorausgesetztesModul() != null) {
-                    verstoss = pruefeVoraussetzung(
-                            geplanterEintrag,
-                            voraussetzung,
-                            planNachModul,
-                            leistungNachModul,
-                            heute);
-                }
+            for (Voraussetzung voraussetzung : modulVoraussetzungen) {
+                PlanVerstoss verstoss = pruefeVoraussetzung(
+                        modulCode,
+                        geplanterEintrag.getSemester(),
+                        voraussetzung,
+                        planNachModul,
+                        leistungNachModul,
+                        heute);
 
                 if (verstoss != null) {
                     verstosse.add(verstoss);
@@ -119,14 +118,50 @@ public class PlanPruefer {
         return verstosse;
     }
 
-    private PlanVerstoss pruefeVoraussetzung(
-            PlanEintrag geplanterEintrag,
+    /**
+     * Prüft eine einzelne Voraussetzung eines Moduls.
+     *
+     * <p>Je nach Art der Voraussetzung wird ein vorausgesetztes Modul oder eine
+     * Mindestzahl an LP (mit {@code toleranz_lp}) geprüft. Diese Methode nutzt
+     * {@link #pruefe} für jeden Planeintrag. Der {@link ProgressService} nutzt sie
+     * für die Fortschritts-Übersicht (US-58): Dort zählen nur Leistungen, deshalb
+     * übergibt er einen leeren Plan und kein Semester.
+     *
+     * @param modulCode         Code des geprüften Moduls, z. B. "B34"
+     * @param semester          Semester, in dem das Modul geplant ist; {@code null}, wenn
+     *                          nur gegen Leistungen geprüft wird
+     * @param voraussetzung     die zu prüfende Voraussetzung dieses Moduls
+     * @param planNachModul     geplante Einträge nach Modulcode; leer, wenn der Plan nicht zählt
+     * @param leistungNachModul Leistungen der Person nach Modulcode
+     * @param heute             aktuelles Datum (für „Ergebnis ausstehend“)
+     * @return der Verstoß, oder {@code null}, wenn die Voraussetzung erfüllt ist
+     */
+    public PlanVerstoss pruefeVoraussetzung(
+            String modulCode,
+            Semester semester,
             Voraussetzung voraussetzung,
             Map<String, PlanEintrag> planNachModul,
             Map<String, Leistung> leistungNachModul,
             LocalDate heute) {
 
-        String geprueftesModul = geplanterEintrag.getModul().getCode();
+        if (voraussetzung.getMinLp() != null) {
+            return pruefeLp(modulCode, semester, voraussetzung, planNachModul, leistungNachModul);
+        }
+        if (voraussetzung.getVorausgesetztesModul() != null) {
+            return pruefeModul(modulCode, semester, voraussetzung, planNachModul, leistungNachModul, heute);
+        }
+        return null;
+    }
+
+    /** Prüft eine Voraussetzung auf ein anderes Modul. */
+    private PlanVerstoss pruefeModul(
+            String geprueftesModul,
+            Semester semester,
+            Voraussetzung voraussetzung,
+            Map<String, PlanEintrag> planNachModul,
+            Map<String, Leistung> leistungNachModul,
+            LocalDate heute) {
+
         String vorausgesetztesModul =
                 voraussetzung.getVorausgesetztesModul().getCode();
 
@@ -147,7 +182,7 @@ public class PlanPruefer {
         if (vorausgesetzterPlan != null
                 && darfAlsGeplantZaehlen(
                         vorausgesetzterPlan,
-                        geplanterEintrag,
+                        semester,
                         gleicheSemesterErlaubt)) {
 
             if (vorausgesetzteLeistung != null
@@ -178,25 +213,28 @@ public class PlanPruefer {
                         + " ist nicht erfüllt.");
     }
 
+    /**
+     * Darf ein geplantes Modul für ein Modul im angegebenen Semester mitzählen?
+     * Ohne Semester (nur Leistungen zählen) nie.
+     */
     private boolean darfAlsGeplantZaehlen(
             PlanEintrag vorausgesetzterPlan,
-            PlanEintrag geplanterEintrag,
+            Semester semester,
             boolean gleicheSemesterErlaubt) {
 
-        if (gleicheSemesterErlaubt) {
-            return semesterService.istFrueher(
-                    vorausgesetzterPlan.getSemester(),
-                    geplanterEintrag.getSemester())
-                    || semesterService.istGleich(
-                            vorausgesetzterPlan.getSemester(),
-                            geplanterEintrag.getSemester());
+        if (semester == null) {
+            return false;
         }
 
-        return semesterService.istFrueher(
-                vorausgesetzterPlan.getSemester(),
-                geplanterEintrag.getSemester());
+        if (gleicheSemesterErlaubt) {
+            return semesterService.istFrueher(vorausgesetzterPlan.getSemester(), semester)
+                    || semesterService.istGleich(vorausgesetzterPlan.getSemester(), semester);
+        }
+
+        return semesterService.istFrueher(vorausgesetzterPlan.getSemester(), semester);
     }
 
+    /** Wurde das Modul nach dem Durchfallen in einem späteren Semester neu geplant? */
     private boolean istNachDurchgefallenNeuGeplant(
             Leistung leistung,
             PlanEintrag planEintrag) {
@@ -217,15 +255,16 @@ public class PlanPruefer {
      * @return der Verstoß oder null, wenn die Voraussetzung erfüllt ist
      */
     private PlanVerstoss pruefeLp(
-            PlanEintrag geplanterEintrag,
+            String geprueftesModul,
+            Semester semester,
             Voraussetzung voraussetzung,
             Map<String, PlanEintrag> planNachModul,
             Map<String, Leistung> leistungNachModul) {
 
-        String geprueftesModul = geplanterEintrag.getModul().getCode();
         int soll = voraussetzung.getMinLp();
-                int ist = zaehleLp(
-                geplanterEintrag,
+        int ist = zaehleLp(
+                geprueftesModul,
+                semester,
                 voraussetzung.isGleichesSemester(),
                 planNachModul,
                 leistungNachModul);
@@ -262,22 +301,17 @@ public class PlanPruefer {
      * neu geplant wurde. Jedes Modul zählt höchstens einmal.
      */
     private int zaehleLp(
-            PlanEintrag geplanterEintrag,
+            String geprueftesModul,
+            Semester semester,
             boolean gleicheSemesterErlaubt,
             Map<String, PlanEintrag> planNachModul,
             Map<String, Leistung> leistungNachModul) {
 
-        Set<String> gezaehlt = new HashSet<>();
-        int summe = 0;
-
-        for (Leistung leistung : leistungNachModul.values()) {
-            if (leistung.getStatus() == Status.BESTANDEN) {
-                gezaehlt.add(leistung.getModul().getCode());
-                summe += leistung.getModul().getLp();
-            }
-        }
-
-        String geprueftesModul = geplanterEintrag.getModul().getCode();
+        int summe = LpRechner.bestandeneLp(leistungNachModul.values());
+        Set<String> gezaehlt = leistungNachModul.values().stream()
+                .filter(LpRechner::istBestanden)
+                .map(leistung -> leistung.getModul().getCode())
+                .collect(Collectors.toSet());
 
         for (PlanEintrag plan : planNachModul.values()) {
             String code = plan.getModul().getCode();
@@ -285,7 +319,7 @@ public class PlanPruefer {
             if (gezaehlt.contains(code)
                     || code.equals(geprueftesModul)
                     || !darfAlsGeplantZaehlen(
-                            plan, geplanterEintrag, gleicheSemesterErlaubt)) {
+                            plan, semester, gleicheSemesterErlaubt)) {
                 continue;
             }
 
@@ -302,6 +336,7 @@ public class PlanPruefer {
         return summe;
     }
 
+    /** NOTWENDIG wird zum Fehler, EMPFOHLEN zur Warnung. */
     private PruefSchwere schweregrad(VoraussetzungsArt art) {
         return art == VoraussetzungsArt.NOTWENDIG
                 ? PruefSchwere.FEHLER

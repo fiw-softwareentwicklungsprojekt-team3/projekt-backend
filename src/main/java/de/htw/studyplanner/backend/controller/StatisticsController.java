@@ -50,12 +50,15 @@ public class StatisticsController {
             summary = "Anonymisierte Kohorten-Statistiken abrufen",
             description = """
                     Liefert aggregierte und vollständig anonymisierte Kennzahlen pro Kohorte (Startsemester).
+                    Kohorten mit weniger als 5 Studierenden werden zum Schutz der Anonymität nicht ausgeliefert.
                     Enthält Studierendenanzahl, durchschnittliche LP, mittleren Fortschritt sowie
-                    Abschlussstände für Sem. 1–3 und die Bachelorarbeit.
+                    Abschlussstände für Sem. 1–3 und die Bachelorarbeit: bachelorThesisEligibleCount zählt
+                    regulär (ab 151 LP), bachelorThesisWithApprovalCount mit Zulassung durch den
+                    Prüfungsausschuss (141–150 LP). Beides setzt bestandene Sem. 1–3 voraus.
                     Nur für Professor_innen abrufbar.""")
     @ApiResponse(
             responseCode = "200",
-            description = "Liste der Kohorten-Statistiken (leer, wenn keine Studierenden in der Datenbank sind)",
+            description = "Liste der Kohorten-Statistiken ab mindestens 5 Studierenden (leer, wenn keine entsprechenden Kohorten vorhanden sind)",
             content = @Content(
                     mediaType = "application/json",
                     array = @ArraySchema(schema = @Schema(implementation = CohortStatisticsDto.class)),
@@ -67,7 +70,8 @@ public class StatisticsController {
                                 "averageLp": 62.4,
                                 "averageProgressPercent": 34.7,
                                 "completedSemesters1To3Count": 28,
-                                "bachelorThesisEligibleCount": 0
+                                "bachelorThesisEligibleCount": 0,
+                                "bachelorThesisWithApprovalCount": 0
                               }
                             ]
                             """)))
