@@ -91,12 +91,19 @@ class PlanQueryServiceTest {
 
     /** Modul mit Code und LP; der Konstruktor ist nicht öffentlich. */
     private static Modul modul(String code, int lp) {
+        return modul(code, lp, null, 0);
+    }
+
+    /** Modul mit Code, LP sowie Vorlesungs- und Übungs-SWS; der Konstruktor ist nicht öffentlich. */
+    private static Modul modul(String code, int lp, Integer swsVorlesung, int swsUebung) {
         try {
             java.lang.reflect.Constructor<Modul> c = Modul.class.getDeclaredConstructor();
             c.setAccessible(true);
             Modul m = c.newInstance();
             ReflectionTestUtils.setField(m, "code", code);
             ReflectionTestUtils.setField(m, "lp", lp);
+            ReflectionTestUtils.setField(m, "swsVorlesung", swsVorlesung);
+            ReflectionTestUtils.setField(m, "swsUebung", swsUebung);
             return m;
         } catch (ReflectiveOperationException e) {
             throw new AssertionError(e);
@@ -238,7 +245,7 @@ class PlanQueryServiceTest {
     }
 
     @Test
-    void genauDreißigLpErzeugenKeineWarnung() {
+    void genauDreissigLpErzeugenKeineWarnung() {
         when(studierendeRepository.findMitStartsemester(42)).thenReturn(Optional.of(studierende));
 
         List<PlanEintrag> eintraege = List.of(
@@ -258,7 +265,7 @@ class PlanQueryServiceTest {
     }
 
     @Test
-    void einunddreißigLpErzeugenWarnung() {
+    void einunddreissigLpErzeugenWarnung() {
         when(studierendeRepository.findMitStartsemester(42)).thenReturn(Optional.of(studierende));
 
         List<PlanEintrag> eintraege = List.of(
@@ -275,6 +282,25 @@ class PlanQueryServiceTest {
 
         assertThat(semester.lp()).isEqualTo(31);
         assertThat(semester.lpLimitExceeded()).isTrue();
+    }
+
+    @Test
+    void swsBerechnungBehandeltNullVorlesungAlsNull() {
+        when(studierendeRepository.findMitStartsemester(42)).thenReturn(Optional.of(studierende));
+
+        // Modul 1: swsVorlesung ist null, swsUebung ist 4 -> 4 SWS
+        // Modul 2: swsVorlesung ist 2, swsUebung ist 2 -> 4 SWS
+        // Summe im Semester: 8 SWS
+        List<PlanEintrag> eintraege = List.of(
+                new PlanEintrag(studierende, modul("B16", 4, null, 4), new Semester(2026, SemesterArt.WS)),
+                new PlanEintrag(studierende, modul("B21", 5, 2, 2), new Semester(2026, SemesterArt.WS)));
+
+        when(planEintragRepository.findPlanMitDetails(42)).thenReturn(eintraege);
+
+        PlanSemesterDto semester = planQueryService.eigenerPlan().semesters().get(0);
+
+        assertThat(semester.sws()).isEqualTo(8);
+        assertThat(semester.lp()).isEqualTo(9);
     }
 
     /** Prüft, dass der Plan genau einen Eintrag hat, und liefert ihn. */

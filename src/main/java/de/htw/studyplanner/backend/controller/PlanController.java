@@ -74,8 +74,9 @@ public class PlanController {
 
                     `prerequisitesMet` ist `false`, sobald ein `FEHLER` vorliegt;
                     `WARNUNG` und `HINWEIS` ändern daran nichts.
-                    LP-Summen (`lp`, `totalLp`) und Verstöße werden bei jeder Anfrage berechnet,
-                    nichts davon wird gespeichert.
+                    LP-Summen (`lp`, `totalLp`), `sws` und `lpLimitExceeded` sowie Verstöße werden
+                    bei jeder Anfrage berechnet, nichts davon wird gespeichert.
+                    `maxLpPerSemester` nennt das konfigurierte Limit (z. B. 30 LP).
 
                     `recommendedSemester` ist das empfohlene Fachsemester laut StuPO,
                     nicht das Plansemester.""")
@@ -91,10 +92,13 @@ public class PlanController {
                                     {
                                       "startSemester": "WS 2026",
                                       "totalLp": 16,
+                                      "maxLpPerSemester": 30,
                                       "semesters": [
                                         {
                                           "semester": "WS 2026",
                                           "lp": 11,
+                                          "sws": 10,
+                                          "lpLimitExceeded": false,
                                           "entries": [
                                             {
                                               "id": 1,
@@ -127,6 +131,8 @@ public class PlanController {
                                         {
                                           "semester": "SS 2027",
                                           "lp": 5,
+                                          "sws": 4,
+                                          "lpLimitExceeded": false,
                                           "entries": [
                                             {
                                               "id": 3,
@@ -154,10 +160,13 @@ public class PlanController {
                                     {
                                       "startSemester": "WS 2026",
                                       "totalLp": 14,
+                                      "maxLpPerSemester": 30,
                                       "semesters": [
                                         {
                                           "semester": "WS 2026",
                                           "lp": 4,
+                                          "sws": 4,
+                                          "lpLimitExceeded": false,
                                           "entries": [
                                             {
                                               "id": 1,
@@ -177,6 +186,8 @@ public class PlanController {
                                         {
                                           "semester": "WS 2027",
                                           "lp": 10,
+                                          "sws": 6,
+                                          "lpLimitExceeded": false,
                                           "entries": [
                                             {
                                               "id": 2,
@@ -217,6 +228,7 @@ public class PlanController {
                                     {
                                       "startSemester": "WS 2026",
                                       "totalLp": 0,
+                                      "maxLpPerSemester": 30,
                                       "semesters": []
                                     }""")
                     }))

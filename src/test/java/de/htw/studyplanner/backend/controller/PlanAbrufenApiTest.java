@@ -193,7 +193,7 @@ class PlanAbrufenApiTest {
     }
 
     @Test
-    void genauDreißigLpSindErlaubtUndSwsWerdenSummiert() throws Exception {
+    void genauDreissigLpSindErlaubtUndSwsWerdenSummiert() throws Exception {
         String token = neueStudierende();
 
         einplanen(token, "B11", "WS 2026", null); // 6 LP, 6 SWS
@@ -212,7 +212,7 @@ class PlanAbrufenApiTest {
     }
 
     @Test
-    void einunddreißigLpLoesenWarnungAus() throws Exception {
+    void einunddreissigLpLoesenWarnungAus() throws Exception {
         String token = neueStudierende();
 
         einplanen(token, "B11", "WS 2026", null); // 6 LP
