@@ -33,6 +33,7 @@ Ohne Token antwortet die API mit 401, bei falscher Rolle mit 403.
 | `/api/progress/**` | erlaubt | 403 |
 | `/api/statistics/**` | 403 | erlaubt |
 | `/api/modules/**`, `GET /api/me` | erlaubt | erlaubt |
+| `PUT /api/me` | erlaubt | 403 |
 | `POST /api/auth/**`, `GET /api/health`, Swagger | ohne Token erlaubt | ohne Token erlaubt |
 
 Die ID der angemeldeten Person liefert `AktuellePerson.id()` aus dem Token.

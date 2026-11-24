@@ -2,6 +2,8 @@ package de.htw.studyplanner.backend.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import org.springframework.http.MediaType;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -117,5 +119,29 @@ class RollenZugriffTest {
         // Den Inhalt der Antwort prüft MeApiTest.
         assertThat(statusVon("/api/me", Rolle.STUDIERENDE)).isNotEqualTo(403);
         assertThat(statusVon("/api/me", Rolle.PROFESSOR_IN)).isNotEqualTo(403);
+    }
+
+    @Test
+    void putMeIstNurFuerStudierendeErlaubt() throws Exception {
+        String body = "{\"startSemester\":\"WS 2025\"}";
+
+        // Ohne Token: 401
+        mockMvc.perform(put("/api/me").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnauthorized());
+
+        // Professor_in: 403
+        mockMvc.perform(put("/api/me")
+                        .header("Authorization", bearer(Rolle.PROFESSOR_IN))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isForbidden());
+
+        // Studierende: nicht 403 (liefert 401, da Test-User nicht in DB)
+        int statusStudierende = mockMvc.perform(put("/api/me")
+                        .header("Authorization", bearer(Rolle.STUDIERENDE))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andReturn().getResponse().getStatus();
+        assertThat(statusStudierende).isNotEqualTo(403);
     }
 }
