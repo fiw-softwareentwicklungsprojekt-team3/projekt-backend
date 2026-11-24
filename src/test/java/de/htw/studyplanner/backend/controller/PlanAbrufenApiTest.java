@@ -117,14 +117,19 @@ class PlanAbrufenApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.startSemester").value("WS 2026"))
                 .andExpect(jsonPath("$.totalLp").value(30))
+                .andExpect(jsonPath("$.maxLpPerSemester").value(30))
                 .andExpect(jsonPath("$.semesters", hasSize(3)))
                 // Semester zeitlich sortiert: WS 2026 < SS 2027 < WS 2027
                 .andExpect(jsonPath("$.semesters[0].semester").value("WS 2026"))
                 .andExpect(jsonPath("$.semesters[0].lp").value(4))
+                .andExpect(jsonPath("$.semesters[0].sws").value(4))
+                .andExpect(jsonPath("$.semesters[0].lpLimitExceeded").value(false))
                 .andExpect(jsonPath("$.semesters[1].semester").value("SS 2027"))
                 .andExpect(jsonPath("$.semesters[1].lp").value(10))
+                .andExpect(jsonPath("$.semesters[1].sws").value(8))
                 .andExpect(jsonPath("$.semesters[2].semester").value("WS 2027"))
                 .andExpect(jsonPath("$.semesters[2].lp").value(16))
+                .andExpect(jsonPath("$.semesters[2].sws").value(12))
                 // Innerhalb eines Semesters nach Modulcode sortiert
                 .andExpect(jsonPath("$.semesters[1].entries[0].moduleCode").value("B21"))
                 .andExpect(jsonPath("$.semesters[1].entries[1].moduleCode").value("B41"))
@@ -183,7 +188,44 @@ class PlanAbrufenApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.startSemester").value("WS 2026"))
                 .andExpect(jsonPath("$.totalLp").value(0))
+                .andExpect(jsonPath("$.maxLpPerSemester").value(30))
                 .andExpect(jsonPath("$.semesters", hasSize(0)));
+    }
+
+    @Test
+    void genauDreissigLpSindErlaubtUndSwsWerdenSummiert() throws Exception {
+        String token = neueStudierende();
+
+        einplanen(token, "B11", "WS 2026", null); // 6 LP, 6 SWS
+        einplanen(token, "B12", "WS 2026", null); // 5 LP, 4 SWS
+        einplanen(token, "B13", "WS 2026", null); // 5 LP, 4 SWS
+        einplanen(token, "B14", "WS 2026", null); // 5 LP, 4 SWS
+        einplanen(token, "B15", "WS 2026", null); // 5 LP, 4 SWS
+        einplanen(token, "B16", "WS 2026", "EN_B2.1"); // 4 LP, 4 SWS
+
+        planAbrufen(token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.maxLpPerSemester").value(30))
+                .andExpect(jsonPath("$.semesters[0].lp").value(30))
+                .andExpect(jsonPath("$.semesters[0].sws").value(26))
+                .andExpect(jsonPath("$.semesters[0].lpLimitExceeded").value(false));
+    }
+
+    @Test
+    void einunddreissigLpLoesenWarnungAus() throws Exception {
+        String token = neueStudierende();
+
+        einplanen(token, "B11", "WS 2026", null); // 6 LP
+        einplanen(token, "B12", "WS 2026", null); // 5 LP
+        einplanen(token, "B13", "WS 2026", null); // 5 LP
+        einplanen(token, "B14", "WS 2026", null); // 5 LP
+        einplanen(token, "B15", "WS 2026", null); // 5 LP
+        einplanen(token, "B31", "WS 2026", null); // 5 LP
+
+        planAbrufen(token)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.semesters[0].lp").value(31))
+                .andExpect(jsonPath("$.semesters[0].lpLimitExceeded").value(true));
     }
 
     @Test

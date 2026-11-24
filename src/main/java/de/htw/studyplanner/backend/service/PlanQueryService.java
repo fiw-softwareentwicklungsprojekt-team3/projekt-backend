@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +29,7 @@ import de.htw.studyplanner.backend.repository.StudierendeRepository;
 import de.htw.studyplanner.backend.security.AktuellePerson;
 
 /**
- * Lesende Seite des Studienplans: liefert {@code GET /api/plan} (US-38, E30).
+ * Lesende Seite des Studienplans: liefert {@code GET /api/plan} (US-38, US-60, E30).
  *
  * <p>Schreibende Operationen stehen in {@link PlanService}. Die Person kommt immer aus
  * dem Token ({@link AktuellePerson#id()}).
@@ -40,6 +41,7 @@ public class PlanQueryService {
     private final StudierendeRepository studierendeRepository;
     private final PlanPruefer planPruefer;
     private final SemesterService semesterService;
+    private final int maxLpPerSemester;
 
     /**
      * Erstellt den Service.
@@ -48,16 +50,19 @@ public class PlanQueryService {
      * @param studierendeRepository Zugriff auf die Tabelle studierende (Startsemester)
      * @param planPruefer           berechnet die Verstöße gegen Voraussetzungen
      * @param semesterService       vergleicht Semester zeitlich
+     * @param maxLpPerSemester      konfiguriertes LP-Limit pro Semester (Standard: 30)
      */
     public PlanQueryService(
             PlanEintragRepository planEintragRepository,
             StudierendeRepository studierendeRepository,
             PlanPruefer planPruefer,
-            SemesterService semesterService) {
+            SemesterService semesterService,
+            @Value("${studyplanner.plan.max-lp-per-semester:30}") int maxLpPerSemester) {
         this.planEintragRepository = planEintragRepository;
         this.studierendeRepository = studierendeRepository;
         this.planPruefer = planPruefer;
         this.semesterService = semesterService;
+        this.maxLpPerSemester = maxLpPerSemester;
     }
 
     /**
@@ -68,7 +73,8 @@ public class PlanQueryService {
      *   <li>Semester zeitlich sortiert über {@link Semester#compareTo(Semester)},
      *       innerhalb eines Semesters nach Modulcode</li>
      *   <li>Nur Semester mit Einträgen; Lücken füllt das Frontend</li>
-     *   <li>LP-Summen und Verstöße werden hier berechnet, nicht gespeichert (E30)</li>
+     *   <li>LP- und SWS-Summen sowie Verstöße werden hier berechnet, nicht gespeichert (E30, US-60)</li>
+     *   <li>{@code lpLimitExceeded} ist {@code true}, wenn die Semester-LP das Limit übersteigen</li>
      *   <li>{@code prerequisitesMet} ist {@code false}, sobald ein {@code FEHLER} vorliegt;
      *       {@code WARNUNG}en ändern daran nichts</li>
      *   <li>Leerer Plan: {@code semesters = []} und {@code totalLp = 0}</li>
@@ -108,11 +114,23 @@ public class PlanQueryService {
                             verstoesseNachModul.getOrDefault(e.getModul().getCode(), List.of())))
                     .toList();
             int lp = dtos.stream().mapToInt(PlanEntryDto::lp).sum();
+            int sws = gruppe.getValue().stream().mapToInt(e -> modulSws(e.getModul())).sum();
+            boolean lpLimitExceeded = lp > maxLpPerSemester;
             gesamtLp += lp;
-            semester.add(new PlanSemesterDto(gruppe.getKey().label(), lp, dtos));
+            semester.add(new PlanSemesterDto(gruppe.getKey().label(), lp, sws, lpLimitExceeded, dtos));
         }
 
-        return new PlanResponse(studierende.getStartsemester().label(), gesamtLp, semester);
+        return new PlanResponse(studierende.getStartsemester().label(), gesamtLp, maxLpPerSemester, semester);
+    }
+
+    /**
+     * Berechnet die SWS eines Moduls aus Vorlesung und Übung.
+     * Fehlende Vorlesungs-SWS (null) werden als 0 gewertet.
+     */
+    private static int modulSws(Modul modul) {
+        Integer vorlesung = modul.getSwsVorlesung();
+        int swsVorlesung = vorlesung != null ? vorlesung : 0;
+        return swsVorlesung + modul.getSwsUebung();
     }
 
     /**
