@@ -22,6 +22,7 @@ import de.htw.studyplanner.backend.model.Studierende;
 import de.htw.studyplanner.backend.model.Voraussetzung;
 import de.htw.studyplanner.backend.model.VoraussetzungsArt;
 import de.htw.studyplanner.backend.repository.LeistungRepository;
+import de.htw.studyplanner.backend.repository.ModulRepository;
 import de.htw.studyplanner.backend.repository.PlanEintragRepository;
 import de.htw.studyplanner.backend.repository.SemesterRepository;
 import de.htw.studyplanner.backend.repository.StudierendeRepository;
@@ -43,9 +44,12 @@ class StatisticsServiceUnitTest {
     private final PlanPruefer planPruefer = new PlanPruefer(
             mock(PlanEintragRepository.class), leistungRepository, voraussetzungRepository,
             new SemesterService(mock(SemesterRepository.class)));
+    private final ModulRepository modulRepository = mock(ModulRepository.class);
+    private final SemesterService semesterService = new SemesterService(mock(SemesterRepository.class));
     private final StatisticsService statisticsService = new StatisticsService(
             studierendeRepository, leistungRepository,
-            new BachelorarbeitPruefer(voraussetzungRepository, planPruefer));
+            new BachelorarbeitPruefer(voraussetzungRepository, planPruefer),
+            modulRepository, semesterService);
 
     /** Baut die notwendigen Voraussetzungen von B66 wie in V2__stupo_seed.sql nach. */
     private static VoraussetzungRepository b66Regeln() {
@@ -219,26 +223,115 @@ class StatisticsServiceUnitTest {
     }
 
     @Test
-    void sortierungChronologischNachJahrUndArt() {
-        Semester ws2025 = new Semester(2025, SemesterArt.WS);
+    void modulStatistikenWerdenKorrektAggregiertUndSortiert() {
+        Semester ws2023 = new Semester(2023, SemesterArt.WS);
         Semester ws2024 = new Semester(2024, SemesterArt.WS);
-        Semester ss2025 = new Semester(2025, SemesterArt.SS);
 
-        List<Studierende> studierende = new ArrayList<>();
-        int id = 1;
-        // Jede Kohorte benötigt mindestens 5 Personen
-        for (int i = 0; i < 5; i++) {
-            studierende.add(erstelleStudierende(id++, ws2025));
-            studierende.add(erstelleStudierende(id++, ws2024));
-            studierende.add(erstelleStudierende(id++, ss2025));
-        }
+        Studierende s1 = erstelleStudierende(1, ws2023);
+        Studierende s2 = erstelleStudierende(2, ws2023);
+        Studierende s3 = erstelleStudierende(3, ws2024);
 
-        when(studierendeRepository.findAllWithStartsemester()).thenReturn(studierende);
-        when(leistungRepository.findByStatusWithModulAndStudierende(Status.BESTANDEN)).thenReturn(List.of());
+        // Module vorbereiten:
+        // B11: Fachsemester 1, benotet
+        Modul b11 = mock(Modul.class);
+        when(b11.getCode()).thenReturn("B11");
+        when(b11.getBezeichnung()).thenReturn("Programmierung 1");
+        when(b11.getFachsemester()).thenReturn(1);
+        when(b11.isBenotet()).thenReturn(true);
 
-        List<CohortStatisticsDto> ergebnis = statisticsService.getCohortStatistics();
+        // B43: Fachsemester 4, unbenotet
+        Modul b43 = mock(Modul.class);
+        when(b43.getCode()).thenReturn("B43");
+        when(b43.getBezeichnung()).thenReturn("Fachpraktikum");
+        when(b43.getFachsemester()).thenReturn(4);
+        when(b43.isBenotet()).thenReturn(false);
 
-        assertThat(ergebnis).extracting(CohortStatisticsDto::cohort)
-                .containsExactly("WS 2024", "SS 2025", "WS 2025");
+        // B12: Fachsemester 1, benotet (aber vor B43 einsortiert)
+        Modul b12 = mock(Modul.class);
+        when(b12.getCode()).thenReturn("B12");
+        when(b12.getBezeichnung()).thenReturn("Mathematik 1");
+        when(b12.getFachsemester()).thenReturn(1);
+        when(b12.isBenotet()).thenReturn(true);
+
+        when(modulRepository.findAll(org.springframework.data.domain.Sort.by(
+                org.springframework.data.domain.Sort.Direction.ASC, "fachsemester", "code")))
+                .thenReturn(List.of(b11, b12, b43));
+
+        // Leistungen:
+        // s1 für B11: BESTANDEN, Note 2.0, 2 Versuche (Wiederholung)
+        Leistung l1 = new Leistung(s1, b11, Status.BESTANDEN);
+        l1.setNote(new java.math.BigDecimal("2.0"));
+        l1.setAnzahlVersuche(2);
+
+        // s2 für B11: BESTANDEN, Note 3.0, 1 Versuch
+        Leistung l2 = new Leistung(s2, b11, Status.BESTANDEN);
+        l2.setNote(new java.math.BigDecimal("3.0"));
+        l2.setAnzahlVersuche(1);
+
+        // s3 für B11: NICHT_BESTANDEN, Note 5.0, 3 Versuche (kritisch)
+        Leistung l3 = new Leistung(s3, b11, Status.NICHT_BESTANDEN);
+        l3.setNote(new java.math.BigDecimal("5.0"));
+        l3.setAnzahlVersuche(3);
+
+        // s1 für B43: BESTANDEN, keine Note, 1 Versuch
+        Leistung l4 = new Leistung(s1, b43, Status.BESTANDEN);
+        l4.setAnzahlVersuche(1);
+
+        // s2 für B12: BELEGT, 1 Versuch
+        Leistung l5 = new Leistung(s2, b12, Status.BELEGT);
+        l5.setAnzahlVersuche(1);
+
+        when(leistungRepository.findAllWithModulAndStudierendeAndStartsemester())
+                .thenReturn(List.of(l1, l2, l3, l4, l5));
+
+        // Ohne Filter
+        List<de.htw.studyplanner.backend.dto.ModuleStatisticsDto> ergebnis =
+                statisticsService.getModuleStatistics(null);
+
+        assertThat(ergebnis).hasSize(3);
+
+        // B11: passed=2, enrolled=0, failed=1, repeat=2 (l1 und l3), critical=1 (l3), avgGrade=2.5
+        var b11Stats = ergebnis.get(0);
+        assertThat(b11Stats.code()).isEqualTo("B11");
+        assertThat(b11Stats.name()).isEqualTo("Programmierung 1");
+        assertThat(b11Stats.semester()).isEqualTo(1);
+        assertThat(b11Stats.passedCount()).isEqualTo(2);
+        assertThat(b11Stats.enrolledCount()).isEqualTo(0);
+        assertThat(b11Stats.failedCount()).isEqualTo(1);
+        assertThat(b11Stats.repeatCount()).isEqualTo(2);
+        assertThat(b11Stats.criticalAttemptCount()).isEqualTo(1);
+        assertThat(b11Stats.averageGrade()).isEqualByComparingTo("2.5");
+
+        // B12: passed=0, enrolled=1, failed=0, repeat=0, critical=0, avgGrade=null
+        var b12Stats = ergebnis.get(1);
+        assertThat(b12Stats.code()).isEqualTo("B12");
+        assertThat(b12Stats.passedCount()).isEqualTo(0);
+        assertThat(b12Stats.enrolledCount()).isEqualTo(1);
+        assertThat(b12Stats.failedCount()).isEqualTo(0);
+        assertThat(b12Stats.averageGrade()).isNull();
+
+        // B43: unbenotetes Modul -> avgGrade ist null
+        var b43Stats = ergebnis.get(2);
+        assertThat(b43Stats.code()).isEqualTo("B43");
+        assertThat(b43Stats.passedCount()).isEqualTo(1);
+        assertThat(b43Stats.averageGrade()).isNull();
+
+        // Mit Kohorten-Filter "WS 2023" -> s3 (WS 2024) wird herausgefiltert
+        List<de.htw.studyplanner.backend.dto.ModuleStatisticsDto> gefiltert =
+                statisticsService.getModuleStatistics("WS 2023");
+
+        var b11Gefiltert = gefiltert.get(0);
+        assertThat(b11Gefiltert.passedCount()).isEqualTo(2);
+        assertThat(b11Gefiltert.failedCount()).isEqualTo(0); // l3 ist nicht mehr dabei
+        assertThat(b11Gefiltert.criticalAttemptCount()).isEqualTo(0);
+        assertThat(b11Gefiltert.repeatCount()).isEqualTo(1); // nur l1
+        assertThat(b11Gefiltert.averageGrade()).isEqualByComparingTo("2.5");
+    }
+
+    @Test
+    void modulStatistikenUngueltigesSemesterWirftException() {
+        org.junit.jupiter.api.Assertions.assertThrows(
+                InvalidSemesterFormatException.class,
+                () -> statisticsService.getModuleStatistics("Sommer2023"));
     }
 }

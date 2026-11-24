@@ -249,4 +249,73 @@ class StatisticsServiceTest {
         assertThat(ergebnis).extracting(CohortStatisticsDto::cohort)
                 .containsExactly("WS 2024", "SS 2025", "WS 2025");
     }
+
+    // -------------------------------------------------------------------------
+    // Integrationstests für Modulstatistiken (US-55)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void modulStatistikenIntegrationstestMitLeistungenUndFilter() {
+        leistungRepository.deleteAll();
+        planEintragRepository.deleteAll();
+        studierendeRepository.deleteAll();
+
+        // 2 Studierende im WS 2024
+        Studierende s1 = erstelleStudierende(ws2024);
+        Studierende s2 = erstelleStudierende(ws2024);
+        // 1 Studierende im SS 2025
+        Studierende s3 = erstelleStudierende(ss2025);
+
+        // s1: B11 bestanden mit 2.0 (2 Versuche)
+        Leistung l1 = fuegeLeistungHinzu(s1, "B11", Status.BESTANDEN);
+        l1.setNote(new java.math.BigDecimal("2.0"));
+        l1.setAnzahlVersuche(2);
+        leistungRepository.save(l1);
+
+        // s2: B11 bestanden mit 3.0 (1 Versuch)
+        Leistung l2 = fuegeLeistungHinzu(s2, "B11", Status.BESTANDEN);
+        l2.setNote(new java.math.BigDecimal("3.0"));
+        l2.setAnzahlVersuche(1);
+        leistungRepository.save(l2);
+
+        // s3: B11 nicht bestanden mit 5.0 (3 Versuche -> kritisch)
+        Leistung l3 = fuegeLeistungHinzu(s3, "B11", Status.NICHT_BESTANDEN);
+        l3.setNote(new java.math.BigDecimal("5.0"));
+        l3.setAnzahlVersuche(3);
+        leistungRepository.save(l3);
+
+        // s1: B43 (unbenotetes Fachpraktikum) bestanden
+        Leistung l4 = fuegeLeistungHinzu(s1, "B43", Status.BESTANDEN);
+        l4.setAnzahlVersuche(1);
+        leistungRepository.save(l4);
+
+        // 1. Ohne Filter: alle Module der PO enthalten
+        List<de.htw.studyplanner.backend.dto.ModuleStatisticsDto> alle =
+                statisticsService.getModuleStatistics(null);
+        assertThat(alle).isNotEmpty();
+
+        var b11Stats = alle.stream().filter(m -> m.code().equals("B11")).findFirst().orElseThrow();
+        assertThat(b11Stats.name()).isEqualTo("Programmierung 1");
+        assertThat(b11Stats.semester()).isEqualTo(1);
+        assertThat(b11Stats.passedCount()).isEqualTo(2);
+        assertThat(b11Stats.enrolledCount()).isEqualTo(0);
+        assertThat(b11Stats.failedCount()).isEqualTo(1);
+        assertThat(b11Stats.repeatCount()).isEqualTo(2);
+        assertThat(b11Stats.criticalAttemptCount()).isEqualTo(1);
+        assertThat(b11Stats.averageGrade()).isEqualByComparingTo("2.5");
+
+        var b43Stats = alle.stream().filter(m -> m.code().equals("B43")).findFirst().orElseThrow();
+        assertThat(b43Stats.passedCount()).isEqualTo(1);
+        assertThat(b43Stats.averageGrade()).isNull(); // unbenotet!
+
+        // 2. Mit Kohorten-Filter "WS 2024": s3 (SS 2025) ist nicht enthalten
+        List<de.htw.studyplanner.backend.dto.ModuleStatisticsDto> gefiltert =
+                statisticsService.getModuleStatistics("WS 2024");
+        var b11Gefiltert = gefiltert.stream().filter(m -> m.code().equals("B11")).findFirst().orElseThrow();
+        assertThat(b11Gefiltert.passedCount()).isEqualTo(2);
+        assertThat(b11Gefiltert.failedCount()).isEqualTo(0);
+        assertThat(b11Gefiltert.criticalAttemptCount()).isEqualTo(0);
+        assertThat(b11Gefiltert.repeatCount()).isEqualTo(1);
+        assertThat(b11Gefiltert.averageGrade()).isEqualByComparingTo("2.5");
+    }
 }

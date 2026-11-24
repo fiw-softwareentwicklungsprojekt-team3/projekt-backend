@@ -14,13 +14,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import de.htw.studyplanner.backend.dto.CohortStatisticsDto;
+import de.htw.studyplanner.backend.dto.ModuleStatisticsDto;
 import de.htw.studyplanner.backend.model.Leistung;
+import de.htw.studyplanner.backend.model.Modul;
 import de.htw.studyplanner.backend.model.Semester;
 import de.htw.studyplanner.backend.model.Status;
 import de.htw.studyplanner.backend.model.Studierende;
 import de.htw.studyplanner.backend.model.Voraussetzung;
 import de.htw.studyplanner.backend.repository.LeistungRepository;
+import de.htw.studyplanner.backend.repository.ModulRepository;
 import de.htw.studyplanner.backend.repository.StudierendeRepository;
+import org.springframework.data.domain.Sort;
 
 /**
  * Service für die Berechnung und Aggregation anonymisierter Kohorten-Statistiken für Lehrende (US-53a).
@@ -58,20 +62,28 @@ public class StatisticsService {
     private final StudierendeRepository studierendeRepository;
     private final LeistungRepository leistungRepository;
     private final BachelorarbeitPruefer bachelorarbeitPruefer;
+    private final ModulRepository modulRepository;
+    private final SemesterService semesterService;
 
     /**
-     * Erstellt den Service mit den benötigten Repositories.
+     * Erstellt den Service mit den benötigten Repositories und Services.
      *
      * @param studierendeRepository Repository für Studierendendaten
      * @param leistungRepository    Repository für Leistungsdaten
      * @param bachelorarbeitPruefer bestimmt die Stufe der Zulassung zur Bachelorarbeit
+     * @param modulRepository       Repository für Moduldaten
+     * @param semesterService       Service zum Parsen von Semestern
      */
     public StatisticsService(StudierendeRepository studierendeRepository,
                              LeistungRepository leistungRepository,
-                             BachelorarbeitPruefer bachelorarbeitPruefer) {
+                             BachelorarbeitPruefer bachelorarbeitPruefer,
+                             ModulRepository modulRepository,
+                             SemesterService semesterService) {
         this.studierendeRepository = studierendeRepository;
         this.leistungRepository = leistungRepository;
         this.bachelorarbeitPruefer = bachelorarbeitPruefer;
+        this.modulRepository = modulRepository;
+        this.semesterService = semesterService;
     }
 
     /**
@@ -171,5 +183,108 @@ public class StatisticsService {
         return BigDecimal.valueOf(value)
                 .setScale(1, RoundingMode.HALF_UP)
                 .doubleValue();
+    }
+
+    /**
+     * Liefert anonymisierte Statistiken zu allen Modulen für Lehrende (US-55).
+     *
+     * <p>Optional kann nach einer Kohorte (Startsemester der Studierenden) gefiltert werden.
+     * Ist {@code cohort} angegeben, muss das Format "WS JJJJ" oder "SS JJJJ" sein;
+     * bei ungültigem Format wird {@link InvalidSemesterFormatException} geworfen (400).
+     *
+     * <p>Die Sortierung der Module erfolgt aufsteigend nach {@code fachsemester} und danach
+     * alphabetisch nach {@code code}.
+     *
+     * @param cohort optionales Startsemester zur Filterung (z. B. "WS 2023"), darf {@code null} sein
+     * @return Liste der Modulstatistiken
+     */
+    @Transactional(readOnly = true)
+    public List<ModuleStatisticsDto> getModuleStatistics(String cohort) {
+        final Semester filterSemester;
+        if (cohort != null && !cohort.isBlank()) {
+            filterSemester = semesterService.parse(cohort.trim(), "cohort");
+        } else {
+            filterSemester = null;
+        }
+
+        // Alle Module sortiert nach fachsemester und code laden
+        List<Modul> alleModule = modulRepository.findAll(
+                Sort.by(Sort.Direction.ASC, "fachsemester", "code"));
+
+        // Alle Leistungen mit Modul, Studierenden und Startsemester in einer Abfrage laden (kein N+1)
+        List<Leistung> alleLeistungen = leistungRepository.findAllWithModulAndStudierendeAndStartsemester();
+
+        // Falls Filter aktiv: nur Leistungen von Studierenden mit dem entsprechenden Startsemester
+        List<Leistung> gefilterteLeistungen;
+        if (filterSemester != null) {
+            gefilterteLeistungen = alleLeistungen.stream()
+                    .filter(l -> l.getStudierende() != null
+                            && l.getStudierende().getStartsemester() != null
+                            && semesterService.istGleich(l.getStudierende().getStartsemester(), filterSemester))
+                    .toList();
+        } else {
+            gefilterteLeistungen = alleLeistungen;
+        }
+
+        // Leistungen nach Modul-Code gruppieren
+        Map<String, List<Leistung>> leistungenNachModul = gefilterteLeistungen.stream()
+                .collect(Collectors.groupingBy(l -> l.getModul().getCode()));
+
+        List<ModuleStatisticsDto> result = new ArrayList<>(alleModule.size());
+
+        for (Modul modul : alleModule) {
+            List<Leistung> leistungen = leistungenNachModul.getOrDefault(modul.getCode(), List.of());
+
+            int passedCount = 0;
+            int enrolledCount = 0;
+            int failedCount = 0;
+            int repeatCount = 0;
+            int criticalAttemptCount = 0;
+
+            BigDecimal notenSumme = BigDecimal.ZERO;
+            int notenAnzahl = 0;
+
+            for (Leistung l : leistungen) {
+                Status status = l.getStatus();
+                if (status == Status.BESTANDEN) {
+                    passedCount++;
+                    if (l.getNote() != null) {
+                        notenSumme = notenSumme.add(l.getNote());
+                        notenAnzahl++;
+                    }
+                } else if (status == Status.BELEGT) {
+                    enrolledCount++;
+                } else if (status == Status.NICHT_BESTANDEN) {
+                    failedCount++;
+                    if (l.getAnzahlVersuche() >= 3) {
+                        criticalAttemptCount++;
+                    }
+                }
+
+                if (l.getAnzahlVersuche() > 1) {
+                    repeatCount++;
+                }
+            }
+
+            BigDecimal averageGrade = null;
+            if (modul.isBenotet() && notenAnzahl > 0) {
+                averageGrade = notenSumme.divide(
+                        BigDecimal.valueOf(notenAnzahl), 1, RoundingMode.HALF_UP);
+            }
+
+            result.add(new ModuleStatisticsDto(
+                    modul.getCode(),
+                    modul.getBezeichnung(),
+                    modul.getFachsemester(),
+                    passedCount,
+                    enrolledCount,
+                    failedCount,
+                    repeatCount,
+                    criticalAttemptCount,
+                    averageGrade
+            ));
+        }
+
+        return result;
     }
 }
