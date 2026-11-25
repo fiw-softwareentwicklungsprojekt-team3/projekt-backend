@@ -27,7 +27,7 @@ import de.htw.studyplanner.backend.repository.StudierendeRepository;
 import org.springframework.data.domain.Sort;
 
 /**
- * Service für die Berechnung und Aggregation anonymisierter Kohorten-Statistiken für Lehrende (US-53a).
+ * Service für die Berechnung und Aggregation anonymisierter Kohorten-Statistiken für Lehrende (US-53a, US-55).
  *
  * <p>Berechnet pro Startsemester (Kohorte) aggregierte Kennzahlen ausschließlich auf Basis
  * tatsächlich bestandener Leistungen ({@code status = 'BESTANDEN'}). Geplante Module
