@@ -132,4 +132,90 @@ class StatisticsApiTest {
                 .andExpect(jsonPath("$[0].leistungen").doesNotExist())
                 .andExpect(jsonPath("$[0].einzelleistungen").doesNotExist());
     }
+
+    // -------------------------------------------------------------------------
+    // Tests für GET /api/statistics/modules (US-55)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void professorinErhaelt200FuerModulstatistiken() throws Exception {
+        when(statisticsService.getModuleStatistics(null)).thenReturn(List.of(
+                new de.htw.studyplanner.backend.dto.ModuleStatisticsDto(
+                        "B11", "Programmierung 1", 1, 140, 15, 8, 22, 3, new java.math.BigDecimal("2.3")),
+                new de.htw.studyplanner.backend.dto.ModuleStatisticsDto(
+                        "B43", "Fachpraktikum", 4, 95, 10, 0, 0, 0, null)
+        ));
+
+        String token = tokenFuerRolle(Rolle.PROFESSOR_IN);
+
+        mockMvc.perform(get("/api/statistics/modules")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[0].code").value("B11"))
+                .andExpect(jsonPath("$[0].name").value("Programmierung 1"))
+                .andExpect(jsonPath("$[0].semester").value(1))
+                .andExpect(jsonPath("$[0].passedCount").value(140))
+                .andExpect(jsonPath("$[0].enrolledCount").value(15))
+                .andExpect(jsonPath("$[0].failedCount").value(8))
+                .andExpect(jsonPath("$[0].repeatCount").value(22))
+                .andExpect(jsonPath("$[0].criticalAttemptCount").value(3))
+                .andExpect(jsonPath("$[0].averageGrade").value(2.3))
+                .andExpect(jsonPath("$[1].code").value("B43"))
+                .andExpect(jsonPath("$[1].averageGrade").doesNotExist());
+    }
+
+    @Test
+    void professorinKannModulstatistikenNachKohorteFiltern() throws Exception {
+        when(statisticsService.getModuleStatistics("WS 2023")).thenReturn(List.of(
+                new de.htw.studyplanner.backend.dto.ModuleStatisticsDto(
+                        "B11", "Programmierung 1", 1, 20, 2, 1, 3, 0, new java.math.BigDecimal("2.1"))
+        ));
+
+        String token = tokenFuerRolle(Rolle.PROFESSOR_IN);
+
+        mockMvc.perform(get("/api/statistics/modules?cohort=WS 2023")
+                        .header("Authorization", token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].code").value("B11"))
+                .andExpect(jsonPath("$[0].passedCount").value(20));
+    }
+
+    @Test
+    void modulstatistikenMitUngueltigemSemesterParameterLiefert400() throws Exception {
+        when(statisticsService.getModuleStatistics("Ungueltig"))
+                .thenThrow(new de.htw.studyplanner.backend.service.InvalidSemesterFormatException(
+                        "cohort", "cohort muss das Format 'WS JJJJ' oder 'SS JJJJ' haben"));
+
+        String token = tokenFuerRolle(Rolle.PROFESSOR_IN);
+
+        mockMvc.perform(get("/api/statistics/modules?cohort=Ungueltig")
+                        .header("Authorization", token))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.errors[0].field").value("cohort"))
+                .andExpect(jsonPath("$.errors[0].message").isString());
+    }
+
+    @Test
+    void studierendeErhalten403FuerModulstatistiken() throws Exception {
+        String token = tokenFuerRolle(Rolle.STUDIERENDE);
+
+        mockMvc.perform(get("/api/statistics/modules")
+                        .header("Authorization", token))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.error").value("Forbidden"))
+                .andExpect(jsonPath("$.path").value("/api/statistics/modules"));
+    }
+
+    @Test
+    void ohneTokenGibtEs401FuerModulstatistiken() throws Exception {
+        mockMvc.perform(get("/api/statistics/modules"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.error").value("Unauthorized"))
+                .andExpect(jsonPath("$.path").value("/api/statistics/modules"));
+    }
 }

@@ -39,4 +39,17 @@ class StatisticsControllerTest {
         List<CohortStatisticsDto> ergebnis = controller.getCohortStatistics();
         assertThat(ergebnis).isEmpty();
     }
+
+    @Test
+    void getModuleStatisticsLiefertErgebnisAusService() {
+        List<de.htw.studyplanner.backend.dto.ModuleStatisticsDto> mockData = List.of(
+                new de.htw.studyplanner.backend.dto.ModuleStatisticsDto(
+                        "B11", "Programmierung 1", 1, 140, 15, 8, 22, 3, new java.math.BigDecimal("2.3"))
+        );
+        when(statisticsService.getModuleStatistics("WS 2023")).thenReturn(mockData);
+
+        List<de.htw.studyplanner.backend.dto.ModuleStatisticsDto> ergebnis =
+                controller.getModuleStatistics("WS 2023");
+        assertThat(ergebnis).isEqualTo(mockData);
+    }
 }

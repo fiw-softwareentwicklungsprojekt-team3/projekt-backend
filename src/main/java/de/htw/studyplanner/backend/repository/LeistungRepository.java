@@ -42,4 +42,13 @@ public interface LeistungRepository extends JpaRepository<Leistung, Integer> {
      */
     @Query("SELECT l FROM Leistung l JOIN FETCH l.modul JOIN FETCH l.studierende WHERE l.status = :status")
     List<Leistung> findByStatusWithModulAndStudierende(@Param("status") Status status);
+
+    /**
+     * Lädt alle Leistungen inklusive des zugehörigen Moduls und der Studierenden (inkl. Startsemester)
+     * in einer einzigen Abfrage für Modulstatistiken (US-55), um N+1-Abfragen zu verhindern.
+     *
+     * @return Liste aller Leistungen mit geladenem Modul, Studierenden und Startsemester
+     */
+    @Query("SELECT l FROM Leistung l JOIN FETCH l.modul JOIN FETCH l.studierende s JOIN FETCH s.startsemester")
+    List<Leistung> findAllWithModulAndStudierendeAndStartsemester();
 }
