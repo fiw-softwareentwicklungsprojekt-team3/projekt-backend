@@ -260,10 +260,16 @@ class StatisticsServiceTest {
         planEintragRepository.deleteAll();
         studierendeRepository.deleteAll();
 
-        // 2 Studierende im WS 2024
+        // 5 Studierende im WS 2024 (erfüllt MIN_COHORT_SIZE = 5 beim Filtern)
         Studierende s1 = erstelleStudierende(ws2024);
         Studierende s2 = erstelleStudierende(ws2024);
-        // 1 Studierende im SS 2025
+        for (int i = 0; i < 3; i++) {
+            Studierende extra = erstelleStudierende(ws2024);
+            Leistung le = fuegeLeistungHinzu(extra, "B12", Status.BELEGT);
+            le.setAnzahlVersuche(1);
+            leistungRepository.save(le);
+        }
+        // 1 Studierende im SS 2025 (unter MIN_COHORT_SIZE = 5)
         Studierende s3 = erstelleStudierende(ss2025);
 
         // s1: B11 bestanden mit 2.0 (2 Versuche)
@@ -317,5 +323,24 @@ class StatisticsServiceTest {
         assertThat(b11Gefiltert.criticalAttemptCount()).isEqualTo(0);
         assertThat(b11Gefiltert.repeatCount()).isEqualTo(1);
         assertThat(b11Gefiltert.averageGrade()).isEqualByComparingTo("2.5");
+    }
+
+    @Test
+    void modulStatistikMitWenigerAlsFuenfStudierendenInKohorteGibtLeereListeZurueck() {
+        Semester ws2025 = semesterRepository.findByJahrAndArt(2025, SemesterArt.WS).orElseGet(() -> semesterRepository.save(new Semester(2025, SemesterArt.WS)));
+        // Nur 4 Studierende in WS 2025 (< MIN_COHORT_SIZE = 5)
+        for (int i = 0; i < 4; i++) {
+            Studierende s = erstelleStudierende(ws2025);
+            Leistung l = fuegeLeistungHinzu(s, "B11", Status.BESTANDEN);
+            l.setNote(new java.math.BigDecimal("2.0"));
+            l.setAnzahlVersuche(1);
+            leistungRepository.save(l);
+        }
+
+        // Ohne Filter sind die Leistungen in der Gesamtsicht enthalten
+        assertThat(statisticsService.getModuleStatistics(null)).isNotEmpty();
+
+        // Mit Kohorten-Filter "WS 2025" (< 5 Studierende) muss zum Schutz der Anonymität leer zurückkommen
+        assertThat(statisticsService.getModuleStatistics("WS 2025")).isEmpty();
     }
 }

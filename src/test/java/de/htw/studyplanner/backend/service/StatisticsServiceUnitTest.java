@@ -281,8 +281,22 @@ class StatisticsServiceUnitTest {
         Leistung l5 = new Leistung(s2, b12, Status.BELEGT);
         l5.setAnzahlVersuche(1);
 
+        // 3 weitere Studierende in WS 2023 (für MIN_COHORT_SIZE = 5 bei Kohorten-Filter)
+        Studierende s4 = org.mockito.Mockito.mock(Studierende.class);
+        org.mockito.Mockito.when(s4.getStartsemester()).thenReturn(s1.getStartsemester());
+        Studierende s5 = org.mockito.Mockito.mock(Studierende.class);
+        org.mockito.Mockito.when(s5.getStartsemester()).thenReturn(s1.getStartsemester());
+        Studierende s6 = org.mockito.Mockito.mock(Studierende.class);
+        org.mockito.Mockito.when(s6.getStartsemester()).thenReturn(s1.getStartsemester());
+        Leistung l6 = new Leistung(s4, b12, Status.BELEGT);
+        l6.setAnzahlVersuche(1);
+        Leistung l7 = new Leistung(s5, b12, Status.BELEGT);
+        l7.setAnzahlVersuche(1);
+        Leistung l8 = new Leistung(s6, b12, Status.BELEGT);
+        l8.setAnzahlVersuche(1);
+
         when(leistungRepository.findAllWithModulAndStudierendeAndStartsemester())
-                .thenReturn(List.of(l1, l2, l3, l4, l5));
+                .thenReturn(List.of(l1, l2, l3, l4, l5, l6, l7, l8));
 
         // Ohne Filter
         List<de.htw.studyplanner.backend.dto.ModuleStatisticsDto> ergebnis =
@@ -306,7 +320,7 @@ class StatisticsServiceUnitTest {
         var b12Stats = ergebnis.get(1);
         assertThat(b12Stats.code()).isEqualTo("B12");
         assertThat(b12Stats.passedCount()).isEqualTo(0);
-        assertThat(b12Stats.enrolledCount()).isEqualTo(1);
+        assertThat(b12Stats.enrolledCount()).isEqualTo(4);
         assertThat(b12Stats.failedCount()).isEqualTo(0);
         assertThat(b12Stats.averageGrade()).isNull();
 

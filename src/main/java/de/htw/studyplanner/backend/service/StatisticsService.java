@@ -27,7 +27,8 @@ import de.htw.studyplanner.backend.repository.StudierendeRepository;
 import org.springframework.data.domain.Sort;
 
 /**
- * Service für die Berechnung und Aggregation anonymisierter Kohorten-Statistiken für Lehrende (US-53a, US-55).
+ * Service für die Berechnung und Aggregation anonymisierter Kohorten- und Modulstatistiken
+ * für Lehrende (US-53a, US-55).
  *
  * <p>Berechnet pro Startsemester (Kohorte) aggregierte Kennzahlen ausschließlich auf Basis
  * tatsächlich bestandener Leistungen ({@code status = 'BESTANDEN'}). Geplante Module
@@ -222,6 +223,14 @@ public class StatisticsService {
                             && l.getStudierende().getStartsemester() != null
                             && semesterService.istGleich(l.getStudierende().getStartsemester(), filterSemester))
                     .toList();
+
+            long anzahlStudierendeInKohorte = gefilterteLeistungen.stream()
+                    .map(Leistung::getStudierende)
+                    .distinct()
+                    .count();
+            if (anzahlStudierendeInKohorte < MIN_COHORT_SIZE) {
+                return List.of();
+            }
         } else {
             gefilterteLeistungen = alleLeistungen;
         }
