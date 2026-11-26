@@ -18,6 +18,7 @@ import de.htw.studyplanner.backend.dto.ResultResponse;
 import de.htw.studyplanner.backend.service.ResultService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -72,6 +73,7 @@ public class ResultController {
     @Operation(summary = "Eigene Leistungen auflisten", description = "Sortiert nach Modulcode.")
     @ApiResponse(responseCode = "200", description = "Liste der eigenen Leistungen",
             content = @Content(mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(implementation = ResultResponse.class)),
                     examples = @ExampleObject(name = "Eine Leistung", value = "[" + BEISPIEL_ANTWORT + "]")))
     @ApiResponse(responseCode = "401", description = "Kein oder ungültiges Token", content = @Content)
     @ApiResponse(responseCode = "403", description = "Nur für Studierende", content = @Content)
